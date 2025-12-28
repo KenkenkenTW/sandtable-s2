@@ -2,7 +2,7 @@
 <html lang="zh-TW"><head>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v4.3 - 修正統計與版面</title>
+    <title>雲端戰略沙盤 v4.6 - 日期功能版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <style>body,
 html {
@@ -46,7 +46,7 @@ html {
     background: rgba(255, 255, 255, 0.9);
     padding: 15px;
     border-radius: 8px;
-    width: 240px;
+    width: 260px;
     box-shadow: rgba(0, 0, 0, 0.3) 0px 2px 10px;
     max-height: 80vh;
     overflow-y: auto;
@@ -60,8 +60,14 @@ html {
 .stat-item {
     font-size: 13px;
     margin: 5px 0px;
-    padding: 3px;
+    padding: 5px 3px;
     border-bottom: 1px solid rgb(238, 238, 238);
+}
+.stat-date {
+    display: block;
+    font-size: 10px;
+    color: rgb(102, 102, 102);
+    margin-top: 2px;
 }
 .total-score {
     font-weight: bold;
@@ -105,14 +111,8 @@ html {
     padding: 8px;
     border: 1px solid rgb(204, 204, 204);
     border-radius: 4px;
-    font-size: 14px;
     width: 100%;
     box-sizing: border-box;
-}
-.row {
-    display: flex;
-    gap: 5px;
-    align-items: center;
 }
 .btn-group {
     display: flex;
@@ -165,19 +165,17 @@ html {
         <option value="">選擇公會...</option>
     </select>
     <div id="stat-content">等待資料中...</div>
-    <div class="sync-status" id="status-text">● 雲端已連線</div>
+    <div class="sync-status" id="status-text">● 雲端連線中</div>
 </div>
 
 <div class="toolbar">
-    <button id="undo-btn" style="background: #f57c00;">↩ 撤銷</button>
-    <button id="export-btn">💾 備份</button>
+    <button id="export-btn">💾 備份數據</button>
 </div>
 
-<div class="hint">操作：[右鍵] 新增標記 | [Alt + 左鍵拖曳] 畫箭頭 | [點擊] 編輯或刪除</div>
+<div class="hint">操作：[右鍵] 新增標記 | [左鍵點擊] 編輯內容</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet-arrowheads@1.4.0/dist/leaflet-arrowheads.min.js"></script>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -199,9 +197,7 @@ html {
     const cloudRef = ref(db, 'war_map_data');
 
     let markersData = [];
-    let linesData = [];
     let guildHistory = [];
-    let actionStack = [];
 
     const imgUrl = 'https://drive.google.com/thumbnail?id=13VlgvIDNeQ11dQ-OsslgmGdi6gIN5ZG1&sz=w2973';
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
@@ -210,12 +206,7 @@ html {
     map.fitBounds(bounds);
 
     function pushToCloud() {
-        set(cloudRef, {
-            markers: markersData,
-            lines: linesData,
-            guilds: guildHistory,
-            stack: actionStack
-        });
+        set(cloudRef, { markers: markersData, guilds: guildHistory });
         document.getElementById('status-text').innerText = "● 正在同步...";
     }
 
@@ -223,24 +214,17 @@ html {
         const data = snapshot.val();
         if (data) {
             markersData = data.markers || [];
-            linesData = data.lines || [];
             guildHistory = data.guilds || [];
-            actionStack = data.stack || [];
             refreshMap();
-            updateGuildDropdown();
-            updateStatsDisplay(); // 更新統計數據
+            updateDropdown();
+            updateStats();
             document.getElementById('status-text').innerText = "● 雲端已同步";
         }
     });
 
     function refreshMap() {
-        map.eachLayer(layer => {
-            if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-                if (!(layer instanceof L.ImageOverlay)) map.removeLayer(layer);
-            }
-        });
+        map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
         markersData.forEach((d, i) => renderMarker(d, i));
-        linesData.forEach((d, i) => renderLine(d, i));
     }
 
     function renderMarker(d, i) {
@@ -250,78 +234,70 @@ html {
             iconSize: [32, 32]
         });
         const m = L.marker(d.latlng, { icon, draggable: true }).addTo(map);
-        m.on('click', () => window.showPopup(m.getLatLng(), i));
-        m.on('dragend', () => {
-            markersData[i].latlng = m.getLatLng();
-            pushToCloud();
-        });
+        m.on('click', (e) => { L.DomEvent.stopPropagation(e); openForm(e.target.getLatLng(), i); });
+        m.on('dragend', () => { markersData[i].latlng = m.getLatLng(); pushToCloud(); });
     }
 
-    function renderLine(pts, i) {
-        const line = L.polyline(pts, { color: 'red', weight: 4, opacity: 0.8 }).arrowheads({size: '15px'}).addTo(map);
-        line.on('click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            if(confirm('刪除此攻擊箭頭？')) {
-                linesData.splice(i, 1);
-                pushToCloud();
-            }
-        });
-    }
+    map.on('contextmenu', (e) => { openForm(e.latlng); });
 
-    // --- 彈窗功能修正 ---
-    window.showPopup = function(latlng, index = null) {
+    function openForm(latlng, index = null) {
         const isEdit = index !== null;
-        const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1 };
+        const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '' };
         const historyOptions = guildHistory.map(g => `<option value="${g}">`).join('');
 
         const html = `
             <div class="popup-form">
                 <strong>${isEdit ? '編輯城池' : '新增標記'}</strong>
                 <label>城池名稱</label>
-                <input type="text" id="f_city" value="${d.city}" placeholder="例如: 襄陽">
+                <input type="text" id="f_city" value="${d.city}" placeholder="輸入名稱">
                 
+                <label>開放/佔領日期</label>
+                <input type="date" id="f_date" value="${d.date || ''}">
+
                 <label>城池等級 (Lv)</label>
-                <input type="number" id="f_level" value="${d.level}" min="1" max="10">
+                <input type="number" id="f_level" value="${d.level}" min="1">
                 
                 <label>佔領公會</label>
-                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="輸入或選擇">
+                <input type="text" id="f_guild" list="guild_list" value="${d.guild}">
                 <datalist id="guild_list">${historyOptions}</datalist>
                 
-                <label>標記顏色</label>
+                <label>顯示顏色</label>
                 <select id="f_color">
-                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>桃紅 (敵方)</option>
-                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>藍色 (友方)</option>
-                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>淺綠 (盟友)</option>
+                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>桃紅 (台服)</option>
+                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>藍色 (韓服)</option>
+                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>淺綠 (日服)</option>
                 </select>
-                
                 <div class="btn-group">
-                    <button class="btn-save" id="save-btn">儲存同步</button>
-                    ${isEdit ? `<button class="btn-del" id="del-btn">刪除</button>` : ''}
+                    <button class="btn-save" id="pop-save">儲存同步</button>
+                    ${isEdit ? `<button class="btn-del" id="pop-del">刪除</button>` : ''}
                 </div>
             </div>`;
             
         L.popup({ minWidth: 230 }).setLatLng(latlng).setContent(html).openOn(map);
 
-        document.getElementById('save-btn').onclick = () => {
+        document.getElementById('pop-save').onclick = () => {
             const guild = document.getElementById('f_guild').value;
             const level = parseInt(document.getElementById('f_level').value) || 1;
             const newData = {
                 city: document.getElementById('f_city').value || '未命名',
+                date: document.getElementById('f_date').value,
                 level: level,
-                score: level * 20, // 假設 1 級 20 分
+                score: level * 20,
                 guild: guild,
                 color: document.getElementById('f_color').value,
                 latlng: { lat: latlng.lat, lng: latlng.lng }
             };
+            
             if (guild && !guildHistory.includes(guild)) guildHistory.push(guild);
             if (isEdit) markersData[index] = newData;
-            else { markersData.push(newData); actionStack.push('marker'); }
+            else markersData.push(newData);
+            
             pushToCloud();
             map.closePopup();
         };
 
         if(isEdit) {
-            document.getElementById('del-btn').onclick = () => {
+            document.getElementById('pop-del').onclick = () => {
                 if(confirm('確定刪除？')) {
                     markersData.splice(index, 1);
                     pushToCloud();
@@ -329,38 +305,50 @@ html {
                 }
             };
         }
-    };
+    }
 
-    // --- 統計功能修正 ---
-    window.updateStatsDisplay = () => {
-        const filterEl = document.getElementById('guild-filter');
-        const guild = filterEl.value;
+    function updateStats() {
+        const guild = document.getElementById('guild-filter').value;
         const content = document.getElementById('stat-content');
+        if (!guild) { content.innerHTML = "請先選擇公會"; return; }
         
-        if (!guild) {
-            content.innerHTML = "請從上方選單選擇公會";
-            return;
-        }
-
         const mine = markersData.filter(m => m.guild === guild);
         if (mine.length === 0) {
-            content.innerHTML = `公會 [${guild}] 尚未佔領城池`;
+            content.innerHTML = `公會 [${guild}] 目前無領地`;
             return;
         }
 
-        let html = '';
-        let total = 0;
+        let html = ''; let total = 0;
         mine.forEach(m => {
-            html += `<div class="stat-item">🏰 ${m.city} <small>(Lv.${m.level})</small> <span style="float:right">${m.score}</span></div>`;
+            html += `<div class="stat-item">
+                        🏰 ${m.city} (Lv.${m.level}) <span style="float:right">${m.score}</span>
+                        ${m.date ? `<span class="stat-date">📅 日期: ${m.date}</span>` : ''}
+                     </div>`;
             total += m.score;
         });
-        html += `<div class="total-score">總計積分 <span style="float:right">${total}</span></div>`;
+        html += `<div class="total-score">總積分 <span style="float:right">${total}</span></div>`;
         content.innerHTML = html;
-    };
+    }
 
-    function updateGuildDropdown() {
+    function updateDropdown() {
         const sel = document.getElementById('guild-filter');
         const current = sel.value;
         const guilds = [...new Set(markersData.map(m => m.guild).filter(g => g))];
-        
-        // 保留「選擇公會」</script></body></html>
+        let options = '<option value="">選擇公會...</option>';
+        guilds.forEach(g => { options += `<option value="${g}" ${g === current ? 'selected' : ''}>${g}</option>`; });
+        sel.innerHTML = options;
+    }
+
+    document.getElementById('guild-filter').onchange = updateStats;
+
+    document.getElementById('export-btn').onclick = () => {
+        const data = { markers: markersData, guilds: guildHistory };
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `沙盤備份_${new Date().toLocaleDateString()}.json`;
+        a.click();
+    };
+</script>
+
+</body></html>
