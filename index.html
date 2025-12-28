@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-TW"><head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>戰略沙盤編輯器 v3</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-arrowheads@1.4.0/dist/leaflet-arrowheads.min.js"></script>
+    <style>body,
+html {
+    margin: 0px;
+    padding: 0px;
+    height: 100%;
+    background: rgb(34, 34, 34);
+    font-family: "Microsoft JhengHei", sans-serif;
+    overflow: hidden;
+}
+#map {
+    height: 100vh;
+    width: 100%;
+}
+.custom-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid black;
+    border-radius: 50%;
+    color: black;
+    font-weight: bold;
+    font-size: 16px;
+    box-shadow: rgba(0, 0, 0, 0.5) 0px 0px 5px;
+}
+.bg-pink {
+    background-color: rgb(255, 105, 180) !important;
+}
+.bg-blue {
+    background-color: rgb(135, 206, 235) !important;
+}
+.bg-green {
+    background-color: rgb(144, 238, 144) !important;
+}
+#stat-panel {
+    position: absolute;
+    top: 10px;
+    left: 50px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 8px;
+    width: 220px;
+    box-shadow: rgba(0, 0, 0, 0.3) 0px 2px 10px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+#stat-panel h3 {
+    margin-top: 0px;
+    font-size: 16px;
+    border-bottom: 1px solid rgb(204, 204, 204);
+    padding-bottom: 5px;
+}
+.stat-item {
+    font-size: 13px;
+    margin: 5px 0px;
+}
+.total-score {
+    font-weight: bold;
+    color: rgb(211, 47, 47);
+    font-size: 15px;
+    border-top: 1px dashed rgb(170, 170, 170);
+    margin-top: 8px;
+    padding-top: 5px;
+}
+.toolbar {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    display: flex;
+    gap: 5px;
+}
+.toolbar button {
+    padding: 8px 12px;
+    cursor: pointer;
+    background: rgb(68, 68, 68);
+    color: white;
+    border: none;
+    border-radius: 4px;
+}
+.toolbar button:hover {
+    background: rgb(102, 102, 102);
+}
+.popup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+}
+.popup-form label {
+    font-size: 12px;
+    color: rgb(102, 102, 102);
+    margin-bottom: -3px;
+}
+.popup-form input,
+.popup-form select {
+    padding: 5px;
+    border: 1px solid rgb(204, 204, 204);
+    border-radius: 4px;
+}
+.btn-group {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+.btn-save {
+    background: rgb(46, 125, 50);
+    color: white;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    flex: 2 1 0%;
+}
+.btn-del {
+    background: rgb(211, 47, 47);
+    color: white;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    flex: 1 1 0%;
+}
+.hint {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000;
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+}</style>
+<style>#pagedeck { overflow: hidden !important; }</style></head>
+<body>
+
+<div id="stat-panel">
+    <h3>公會勢力統計</h3>
+    <select id="guild-filter" onchange="updateStats()" style="width: 100%; padding: 5px; margin-bottom: 10px;"></select>
+    <div id="stat-content">請先建立標記</div>
+</div>
+
+<div class="toolbar">
+    <button onclick="exportData()">匯出資料</button>
+    <button onclick="document.getElementById('importFile').click()">匯入資料</button>
+    <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+</div>
+
+<div class="hint">提示：Alt + 滑鼠左鍵拖曳可畫攻擊箭頭 | 點擊標記編輯 | 點擊線條刪除</div>
+<div id="map"></div>
+
+<script>
+    const imgUrl = 'https://drive.google.com/thumbnail?id=13VlgvIDNeQ11dQ-OsslgmGdi6gIN5ZG1&sz=w2973'; 
+    const imgWidth = 2000, imgHeight = 2000;
+
+    const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
+    const bounds = [[0, 0], [imgHeight, imgWidth]];
+    L.imageOverlay(imgUrl, bounds).addTo(map);
+    map.fitBounds(bounds);
+
+    let markersData = JSON.parse(localStorage.getItem('v3_markers') || '[]');
+    let linesData = JSON.parse(localStorage.getItem('v3_lines') || '[]');
+    let guildHistory = JSON.parse(localStorage.getItem('v3_guilds') || '[]');
+
+    // 初始化載入
+    function init() {
+        markersData.forEach((d, i) => renderMarker(d, i));
+        linesData.forEach((d, i) => renderLine(d, i));
+        updateGuildDropdown();
+        updateStats();
+    }
+
+    // --- 標記功能 ---
+    map.on('contextmenu', (e) => showPopup(e.latlng));
+
+    function showPopup(latlng, index = null) {
+        const isEdit = index !== null;
+        const d = isEdit ? markersData[index] : { city: '', date: '', guild: '', color: 'bg-pink', level: 1 };
+        const historyOptions = guildHistory.map(g => `<option value="${g}">`).join('');
+
+        const html = `
+            <div class="popup-form">
+                <strong>${isEdit ? '編輯城池' : '新增標記'}</strong>
+                <label>城池名稱 / 等級</label>
+                <div style="display:flex; gap:2px;">
+                    <input type="text" id="f_city" value="${d.city}" style="flex:3" placeholder="名稱">
+                    <input type="number" id="f_level" value="${d.level}" style="flex:1" min="1" max="10">
+                </div>
+                <label>開放日期</label>
+                <input type="date" id="f_date" value="${d.date}">
+                <label>公會名稱</label>
+                <input type="text" id="f_guild" list="guild_list" value="${d.guild}">
+                <datalist id="guild_list">${historyOptions}</datalist>
+                <label>標記底色</label>
+                <select id="f_color">
+                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>桃紅</option>
+                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>藍色</option>
+                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>淺綠</option>
+                </select>
+                <div class="btn-group">
+                    <button class="btn-save" onclick="saveMarker('${latlng.lat}','${latlng.lng}',${index})">儲存</button>
+                    ${isEdit ? `<button class="btn-del" onclick="deleteMarker(${index})">刪除</button>` : ''}
+                </div>
+            </div>
+        `;
+        L.popup().setLatLng(latlng).setContent(html).openOn(map);
+    }
+
+    window.saveMarker = (lat, lng, index) => {
+        const guild = document.getElementById('f_guild').value;
+        const level = parseInt(document.getElementById('f_level').value) || 1;
+        const newData = {
+            city: document.getElementById('f_city').value,
+            level: level,
+            score: level * 20,
+            date: document.getElementById('f_date').value,
+            guild: guild,
+            color: document.getElementById('f_color').value,
+            latlng: { lat: parseFloat(lat), lng: parseFloat(lng) }
+        };
+
+        if (guild && !guildHistory.includes(guild)) guildHistory.push(guild);
+        if (index !== null) markersData[index] = newData;
+        else markersData.push(newData);
+
+        saveAll();
+    };
+
+    window.deleteMarker = (i) => { if(confirm('刪除標記？')){ markersData.splice(i,1); saveAll(); } };
+
+    function renderMarker(d, i) {
+        const icon = L.divIcon({
+            className: `custom-marker ${d.color}`,
+            html: `<span>${d.guild ? d.guild[0] : '?'}</span>`,
+            iconSize: [30, 30]
+        });
+        const m = L.marker(d.latlng, { icon: icon, draggable: true }).addTo(map);
+        m.on('click', (e) => showPopup(e.target.getLatLng(), i));
+        m.on('dragend', (e) => { markersData[i].latlng = e.target.getLatLng(); saveAll(false); });
+    }
+
+    // --- 箭頭攻擊線功能 ---
+    let isDrawing = false, tempLine = null, startPt = null;
+
+    map.on('mousedown', (e) => {
+        if (e.originalEvent.altKey) {
+            isDrawing = true;
+            startPt = e.latlng;
+            map.dragging.disable();
+        }
+    });
+
+    map.on('mousemove', (e) => {
+        if (!isDrawing) return;
+        if (tempLine) map.removeLayer(tempLine);
+        tempLine = L.polyline([startPt, e.latlng], { color: 'red', weight: 3 }).arrowheads().addTo(map);
+    });
+
+    map.on('mouseup', (e) => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        map.dragging.enable();
+        if (tempLine) {
+            linesData.push([startPt, e.latlng]);
+            saveAll();
+        }
+    });
+
+    function renderLine(pts, i) {
+        const line = L.polyline(pts, { color: 'red', weight: 4, opacity: 0.8 }).arrowheads({size: '15px'}).addTo(map);
+        line.on('click', () => { if(confirm('刪除此攻擊線？')){ linesData.splice(i,1); saveAll(); } });
+    }
+
+    // --- 統計與資料功能 ---
+    function updateGuildDropdown() {
+        const sel = document.getElementById('guild-filter');
+        const current = sel.value;
+        const guilds = [...new Set(markersData.map(m => m.guild).filter(g => g))];
+        sel.innerHTML = guilds.map(g => `<option value="${g}">${g}</option>`).join('');
+        if (current && guilds.includes(current)) sel.value = current;
+    }
+
+    function updateStats() {
+        const guild = document.getElementById('guild-filter').value;
+        const content = document.getElementById('stat-content');
+        if (!guild) { content.innerHTML = "尚無資料"; return; }
+
+        const mine = markersData.filter(m => m.guild === guild);
+        let html = '';
+        let total = 0;
+        mine.forEach(m => {
+            html += `<div class="stat-item">🏰 ${m.city} (Lv.${m.level})：${m.score}分</div>`;
+            total += m.score;
+        });
+        html += `<div class="total-score">總積分：${total} 分</div>`;
+        content.innerHTML = html;
+    }
+
+    function saveAll(reload = true) {
+        localStorage.setItem('v3_markers', JSON.stringify(markersData));
+        localStorage.setItem('v3_lines', JSON.stringify(linesData));
+        localStorage.setItem('v3_guilds', JSON.stringify(guildHistory));
+        if(reload) location.reload();
+    }
+
+    window.exportData = () => {
+        const data = { markers: markersData, lines: linesData, guilds: guildHistory };
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `戰略部署_${new Date().toLocaleDateString()}.json`;
+        a.click();
+    };
+
+    window.importData = (e) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = JSON.parse(event.target.result);
+            markersData = data.markers || [];
+            linesData = data.lines || [];
+            guildHistory = data.guilds || [];
+            saveAll();
+        };
+        reader.readAsText(e.target.files[0]);
+    };
+
+    init();
+</script>
+
+</body></html>
