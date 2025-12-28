@@ -1,162 +1,47 @@
 <!DOCTYPE html>
-<html lang="zh-TW"><head>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><meta charset="UTF-8">
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v4.6 - 日期功能版</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <style>body,
-html {
-    margin: 0px;
-    padding: 0px;
-    height: 100%;
-    background: rgb(34, 34, 34);
-    font-family: "Microsoft JhengHei", sans-serif;
-    overflow: hidden;
-}
-#map {
-    height: 100vh;
-    width: 100%;
-    cursor: crosshair;
-}
-.custom-marker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid black;
-    border-radius: 50%;
-    color: black;
-    font-weight: bold;
-    font-size: 16px;
-    box-shadow: rgba(0, 0, 0, 0.5) 0px 0px 5px;
-}
-.bg-pink {
-    background-color: rgb(255, 105, 180) !important;
-}
-.bg-blue {
-    background-color: rgb(135, 206, 235) !important;
-}
-.bg-green {
-    background-color: rgb(144, 238, 144) !important;
-}
-#stat-panel {
-    position: absolute;
-    top: 10px;
-    left: 50px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 15px;
-    border-radius: 8px;
-    width: 260px;
-    box-shadow: rgba(0, 0, 0, 0.3) 0px 2px 10px;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-#stat-panel h3 {
-    margin: 0px 0px 10px;
-    font-size: 16px;
-    border-bottom: 1px solid rgb(204, 204, 204);
-    padding-bottom: 5px;
-}
-.stat-item {
-    font-size: 13px;
-    margin: 5px 0px;
-    padding: 5px 3px;
-    border-bottom: 1px solid rgb(238, 238, 238);
-}
-.stat-date {
-    display: block;
-    font-size: 10px;
-    color: rgb(102, 102, 102);
-    margin-top: 2px;
-}
-.total-score {
-    font-weight: bold;
-    color: rgb(211, 47, 47);
-    font-size: 15px;
-    margin-top: 10px;
-    padding-top: 5px;
-    border-top: 2px solid rgb(211, 47, 47);
-}
-.toolbar {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 1000;
-    display: flex;
-    gap: 5px;
-}
-.toolbar button {
-    padding: 8px 12px;
-    cursor: pointer;
-    background: rgb(51, 51, 51);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-weight: bold;
-}
-.popup-form {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 220px;
-    padding: 5px;
-}
-.popup-form label {
-    font-size: 12px;
-    color: rgb(51, 51, 51);
-    font-weight: bold;
-}
-.popup-form input,
-.popup-form select {
-    padding: 8px;
-    border: 1px solid rgb(204, 204, 204);
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
-}
-.btn-group {
-    display: flex;
-    gap: 5px;
-    margin-top: 10px;
-}
-.btn-save {
-    background: rgb(46, 125, 50);
-    color: white;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-    border-radius: 4px;
-    flex: 2 1 0%;
-    font-weight: bold;
-}
-.btn-del {
-    background: rgb(211, 47, 47);
-    color: white;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-    border-radius: 4px;
-    flex: 1 1 0%;
-}
-.hint {
-    position: absolute;
-    bottom: 15px;
-    left: 15px;
-    z-index: 1000;
-    color: white;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-size: 12px;
-    pointer-events: none;
-}
-.sync-status {
-    color: rgb(76, 175, 80);
-    font-size: 10px;
-    margin-top: 5px;
-    text-align: right;
-}</style>
-<style>#pagedeck { overflow: hidden !important; }</style></head>
+    <title>雲端戰略沙盤 v4.8 - 自動定位跳轉版</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; background: #222; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; cursor: crosshair; }
+        
+        .custom-marker { display: flex; align-items: center; justify-content: center; border: 2px solid black; border-radius: 50%; color: black; font-weight: bold; font-size: 13px; box-shadow: 0 0 5px rgba(0,0,0,0.5); text-align: center; }
+        .bg-pink { background-color: #ff69b4 !important; }
+        .bg-blue { background-color: #87ceeb !important; }
+        .bg-green { background-color: #90ee90 !important; }
+        .bg-gold { background-color: #ffd700 !important; }
+        .bg-silver { background-color: #c0c0c0 !important; }
+        .bg-brown { background-color: #8b4513 !important; color: white !important; }
+
+        #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto; }
+        #stat-panel h3 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+        
+        /* 統計項點擊樣式 */
+        .stat-item { font-size: 13px; margin: 5px 0; padding: 8px 5px; border-bottom: 1px solid #ddd; cursor: pointer; transition: background 0.2s; }
+        .stat-item:hover { background: rgba(0,0,0,0.05); }
+        .city-link { color: #1a73e8; font-weight: bold; text-decoration: underline; }
+        .stat-date { display: block; font-size: 10px; color: #666; margin-top: 2px; }
+        
+        .total-score { font-weight: bold; color: #d32f2f; font-size: 15px; margin-top: 10px; padding-top: 5px; border-top: 2px solid #d32f2f; }
+
+        .toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; gap: 5px; }
+        .toolbar button { padding: 8px 12px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px; font-weight: bold; }
+
+        .popup-form { display: flex; flex-direction: column; gap: 8px; min-width: 220px; padding: 5px; }
+        .popup-form label { font-size: 12px; color: #333; font-weight: bold; }
+        .popup-form input, .popup-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-save { background: #2e7d32; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px; flex: 2; font-weight: bold; }
+        .btn-del { background: #d32f2f; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px; flex: 1; }
+        
+        .hint { position: absolute; bottom: 15px; left: 15px; z-index: 1000; color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-size: 12px; pointer-events: none; }
+        .sync-status { color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right; }
+    </style>
+</head>
 <body>
 
 <div id="stat-panel">
@@ -172,7 +57,7 @@ html {
     <button id="export-btn">💾 備份數據</button>
 </div>
 
-<div class="hint">操作：[右鍵] 新增標記 | [左鍵點擊] 編輯內容</div>
+<div class="hint">操作：[右鍵] 新增標記 | [點擊統計城池] 快速跳轉定位</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -198,6 +83,7 @@ html {
 
     let markersData = [];
     let guildHistory = [];
+    let markerInstances = []; // 儲存地圖標記實體以供跳轉
 
     const imgUrl = '開季.png';
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
@@ -223,20 +109,46 @@ html {
     });
 
     function refreshMap() {
-        map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+        // 清除舊標記
+        markerInstances.forEach(m => map.removeLayer(m));
+        markerInstances = [];
+        
         markersData.forEach((d, i) => renderMarker(d, i));
     }
 
     function renderMarker(d, i) {
+        const displayName = d.guild ? d.guild.slice(0, 2) : '?';
         const icon = L.divIcon({
             className: `custom-marker ${d.color}`,
-            html: `<span>${d.guild ? d.guild[0] : '?'}</span>`,
-            iconSize: [32, 32]
+            html: `<span>${displayName}</span>`,
+            iconSize: [36, 36]
         });
         const m = L.marker(d.latlng, { icon, draggable: true }).addTo(map);
-        m.on('click', (e) => { L.DomEvent.stopPropagation(e); openForm(e.target.getLatLng(), i); });
-        m.on('dragend', () => { markersData[i].latlng = m.getLatLng(); pushToCloud(); });
+        
+        m.on('click', (e) => { 
+            L.DomEvent.stopPropagation(e); 
+            openForm(e.target.getLatLng(), i); 
+        });
+
+        m.on('dragend', () => { 
+            markersData[i].latlng = m.getLatLng(); 
+            pushToCloud(); 
+        });
+
+        markerInstances[i] = m; // 存入陣列，索引需與 markersData 對齊
     }
+
+    // 提供給統計面板點擊的跳轉函數
+    window.jumpToMarker = function(index) {
+        const data = markersData[index];
+        const marker = markerInstances[index];
+        if (data && marker) {
+            map.flyTo(data.latlng, 1, { duration: 1.5 }); // 跳轉到該座標，縮放等級為 1
+            setTimeout(() => {
+                marker.fire('click'); // 到達後自動觸發點擊（開啟編輯彈窗）
+            }, 1600);
+        }
+    };
 
     map.on('contextmenu', (e) => { openForm(e.latlng); });
 
@@ -250,22 +162,21 @@ html {
                 <strong>${isEdit ? '編輯城池' : '新增標記'}</strong>
                 <label>城池名稱</label>
                 <input type="text" id="f_city" value="${d.city}" placeholder="輸入名稱">
-                
-                <label>開放/佔領日期</label>
+                <label>日期</label>
                 <input type="date" id="f_date" value="${d.date || ''}">
-
                 <label>城池等級 (Lv)</label>
                 <input type="number" id="f_level" value="${d.level}" min="1">
-                
                 <label>佔領公會</label>
                 <input type="text" id="f_guild" list="guild_list" value="${d.guild}">
                 <datalist id="guild_list">${historyOptions}</datalist>
-                
                 <label>顯示顏色</label>
                 <select id="f_color">
-                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>桃紅 (台服)</option>
-                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>藍色 (韓服)</option>
-                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>淺綠 (日服)</option>
+                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>桃紅</option>
+                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>藍色</option>
+                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>淺綠</option>
+                    <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>金色</option>
+                    <option value="bg-silver" ${d.color==='bg-silver'?'selected':''}>銀色</option>
+                    <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>咖啡色</option>
                 </select>
                 <div class="btn-group">
                     <button class="btn-save" id="pop-save">儲存同步</button>
@@ -287,11 +198,9 @@ html {
                 color: document.getElementById('f_color').value,
                 latlng: { lat: latlng.lat, lng: latlng.lng }
             };
-            
             if (guild && !guildHistory.includes(guild)) guildHistory.push(guild);
             if (isEdit) markersData[index] = newData;
             else markersData.push(newData);
-            
             pushToCloud();
             map.closePopup();
         };
@@ -312,7 +221,10 @@ html {
         const content = document.getElementById('stat-content');
         if (!guild) { content.innerHTML = "請先選擇公會"; return; }
         
-        const mine = markersData.filter(m => m.guild === guild);
+        // 找出該公會的所有標記及其原始索引
+        const mine = markersData.map((m, originalIdx) => ({...m, originalIdx}))
+                                .filter(m => m.guild === guild);
+
         if (mine.length === 0) {
             content.innerHTML = `公會 [${guild}] 目前無領地`;
             return;
@@ -320,8 +232,8 @@ html {
 
         let html = ''; let total = 0;
         mine.forEach(m => {
-            html += `<div class="stat-item">
-                        🏰 ${m.city} (Lv.${m.level}) <span style="float:right">${m.score}</span>
+            html += `<div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
+                        🏰 <span class="city-link">${m.city}</span> (Lv.${m.level}) <span style="float:right">${m.score}</span>
                         ${m.date ? `<span class="stat-date">📅 日期: ${m.date}</span>` : ''}
                      </div>`;
             total += m.score;
@@ -350,5 +262,5 @@ html {
         a.click();
     };
 </script>
-
-</body></html>
+</body>
+</html>
