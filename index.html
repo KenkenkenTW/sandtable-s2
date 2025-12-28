@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v4.8 - 自動定位跳轉版</title>
+    <title>雲端戰略沙盤 v4.9 - 統計排序優化版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #222; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
@@ -22,11 +22,10 @@
         #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto; }
         #stat-panel h3 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
         
-        /* 統計項點擊樣式 */
         .stat-item { font-size: 13px; margin: 5px 0; padding: 8px 5px; border-bottom: 1px solid #ddd; cursor: pointer; transition: background 0.2s; }
         .stat-item:hover { background: rgba(0,0,0,0.05); }
         .city-link { color: #1a73e8; font-weight: bold; text-decoration: underline; }
-        .stat-date { display: block; font-size: 10px; color: #666; margin-top: 2px; }
+        .stat-date { display: block; font-size: 10px; color: #d32f2f; font-weight: bold; margin-top: 2px; }
         
         .total-score { font-weight: bold; color: #d32f2f; font-size: 15px; margin-top: 10px; padding-top: 5px; border-top: 2px solid #d32f2f; }
 
@@ -59,7 +58,7 @@
     <button id="export-btn">💾 備份數據</button>
 </div>
 
-<div class="hint">操作：[右鍵] 新增標記 | [點擊統計城池] 快速跳轉定位</div>
+<div class="hint">操作：[右鍵] 新增標記 | [點擊列表] 快速跳轉城池</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -85,7 +84,7 @@
 
     let markersData = [];
     let guildHistory = [];
-    let markerInstances = []; // 儲存地圖標記實體以供跳轉
+    let markerInstances = [];
 
     const imgUrl = '開季.png';
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
@@ -111,10 +110,8 @@
     });
 
     function refreshMap() {
-        // 清除舊標記
         markerInstances.forEach(m => map.removeLayer(m));
         markerInstances = [];
-        
         markersData.forEach((d, i) => renderMarker(d, i));
     }
 
@@ -126,29 +123,23 @@
             iconSize: [36, 36]
         });
         const m = L.marker(d.latlng, { icon, draggable: true }).addTo(map);
-        
         m.on('click', (e) => { 
             L.DomEvent.stopPropagation(e); 
             openForm(e.target.getLatLng(), i); 
         });
-
         m.on('dragend', () => { 
             markersData[i].latlng = m.getLatLng(); 
             pushToCloud(); 
         });
-
-        markerInstances[i] = m; // 存入陣列，索引需與 markersData 對齊
+        markerInstances[i] = m;
     }
 
-    // 提供給統計面板點擊的跳轉函數
     window.jumpToMarker = function(index) {
         const data = markersData[index];
         const marker = markerInstances[index];
         if (data && marker) {
-            map.flyTo(data.latlng, 1, { duration: 1.5 }); // 跳轉到該座標，縮放等級為 1
-            setTimeout(() => {
-                marker.fire('click'); // 到達後自動觸發點擊（開啟編輯彈窗）
-            }, 1600);
+            map.flyTo(data.latlng, 1, { duration: 1.2 });
+            setTimeout(() => { marker.fire('click'); }, 1300);
         }
     };
 
@@ -161,12 +152,12 @@
 
         const html = `
             <div class="popup-form">
-                <strong>${isEdit ? '編輯城池' : '新增標記'}</strong>
+                <strong>${isEdit ? '編輯標記' : '新增標記'}</strong>
                 <label>城池名稱</label>
                 <input type="text" id="f_city" value="${d.city}" placeholder="輸入名稱">
                 <label>日期</label>
                 <input type="date" id="f_date" value="${d.date || ''}">
-                <label>城池等級 (Lv)</label>
+                <label>等級 (Lv)</label>
                 <input type="number" id="f_level" value="${d.level}" min="1">
                 <label>佔領公會</label>
                 <input type="text" id="f_guild" list="guild_list" value="${d.guild}">
@@ -225,9 +216,17 @@
         const content = document.getElementById('stat-content');
         if (!guild) { content.innerHTML = "請先選擇公會"; return; }
         
-        // 找出該公會的所有標記及其原始索引
-        const mine = markersData.map((m, originalIdx) => ({...m, originalIdx}))
+        // 核心邏輯：提取、排序
+        let mine = markersData.map((m, originalIdx) => ({...m, originalIdx}))
                                 .filter(m => m.guild === guild);
+
+        // 排序：有日期的排前面且依時間升序，沒日期的排最後
+        mine.sort((a, b) => {
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return new Date(a.date) - new Date(b.date);
+        });
 
         if (mine.length === 0) {
             content.innerHTML = `公會 [${guild}] 目前無領地`;
@@ -238,7 +237,7 @@
         mine.forEach(m => {
             html += `<div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
                         🏰 <span class="city-link">${m.city}</span> (Lv.${m.level}) <span style="float:right">${m.score}</span>
-                        ${m.date ? `<span class="stat-date">📅 日期: ${m.date}</span>` : ''}
+                        ${m.date ? `<span class="stat-date">📅 日期: ${m.date}</span>` : '<span class="stat-date">📅 未設定日期</span>'}
                      </div>`;
             total += m.score;
         });
