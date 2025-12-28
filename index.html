@@ -201,7 +201,7 @@ html {
 
     const imgUrl = 'https://drive.google.com/thumbnail?id=13VlgvIDNeQ11dQ-OsslgmGdi6gIN5ZG1&sz=w2973';
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
-    const bounds = [[0, 0], [2000, 2000]];
+    const bounds = [[0, 0], [2973, 2978]];
     L.imageOverlay(imgUrl, bounds).addTo(map);
     map.fitBounds(bounds);
 
