@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v5.8 - 積分排行版</title>
+    <title>雲端戰略沙盤 v5.8 - 積分排行版 選中公會標示突出</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
@@ -26,6 +26,23 @@
         .bg-gold { background-color: #ffd700 !important; }
         .bg-purple { background-color: #BE77FF !important; }
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
+      
+        /* 被選中公會的標記突顯樣式 */
+        .highlight-marker {
+            width: 48px !important;   /* 放大尺寸 */
+            height: 48px !important;  /* 放大尺寸 */
+            margin-left: -24px !important; /* 修正位移 (半徑) */
+            margin-top: -24px !important;  /* 修正位移 (半徑) */
+            z-index: 999 !important;
+            border: 3px solid gold !important;
+            box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important;
+            transition: all 0.3s ease; /* 增加平滑縮放動畫 */
+        }
+
+        /* 突顯狀態下的文字大小調整 */
+        .highlight-marker span {
+            font-size: 16px !important;
+        }
 
         /* 今日動態效果 */
         @keyframes pulse-today {
@@ -294,27 +311,41 @@
         sel.innerHTML = options;
     }
 
-    function updateStats() {
+function updateStats() {
         const guild = document.getElementById('guild-filter').value;
         const content = document.getElementById('stat-content');
-        if (!guild) { content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; return; }
         
+        // --- 核心更新：重置所有標記樣式 ---
+        markerInstances.forEach(m => {
+            const el = m.getElement();
+            if (el) el.classList.remove('highlight-marker');
+        });
+
+        if (!guild) { 
+            content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; 
+            return; 
+        }
+        
+        // 篩選該公會資料
         let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
         
-        // --- 核心更新：日期排序由遠到近 (由舊到新) ---
+        // 日期排序 (由舊到新)
         mine.sort((a, b) => {
-            // 如果沒設定日期，將其排在最後
             if (!a.date && !b.date) return 0;
             if (!a.date) return 1;
             if (!b.date) return -1;
-            
-            // 日期比較：a < b 則結果為負，a 就會排在前面
             return new Date(a.date) - new Date(b.date);
         });
 
         let html = ''; let total = 0;
         mine.forEach(m => {
-            // 判定是否為今日，給予特殊顏色提醒
+            // --- 核心更新：將地圖上對應的標記放大 ---
+            const markerInstance = markerInstances[m.originalIdx];
+            if (markerInstance) {
+                const el = markerInstance.getElement();
+                if (el) el.classList.add('highlight-marker');
+            }
+
             const today = new Date().toISOString().split('T')[0];
             const dateStyle = m.date === today ? 'color: #d32f2f; font-weight: bold;' : 'color: #666;';
 
