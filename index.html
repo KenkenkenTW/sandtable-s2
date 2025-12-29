@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v5.8 - 積分排行版 選中公會標示突出</title>
+    <title>雲端戰略沙盤 v6.0 - 戰略點強化版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
@@ -29,20 +29,14 @@
       
         /* 被選中公會的標記突顯樣式 */
         .highlight-marker {
-            width: 48px !important;   /* 放大尺寸 */
-            height: 48px !important;  /* 放大尺寸 */
-            margin-left: -24px !important; /* 修正位移 (半徑) */
-            margin-top: -24px !important;  /* 修正位移 (半徑) */
-            z-index: 999 !important;
-            border: 3px solid gold !important;
+            width: 48px !important; height: 48px !important;
+            margin-left: -24px !important; margin-top: -24px !important;
+            z-index: 999 !important; border: 3px solid gold !important;
             box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important;
-            transition: all 0.3s ease; /* 增加平滑縮放動畫 */
+            transition: all 0.3s ease;
         }
 
-        /* 突顯狀態下的文字大小調整 */
-        .highlight-marker span {
-            font-size: 16px !important;
-        }
+        .highlight-marker span { font-size: 16px !important; }
 
         /* 今日動態效果 */
         @keyframes pulse-today {
@@ -75,6 +69,9 @@
         
         .hint { position: absolute; bottom: 15px; left: 15px; z-index: 1000; color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-size: 12px; pointer-events: none; }
         .sync-status { color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right; }
+        
+        /* 戰略點標籤樣式 */
+        .gate-tag { background: #eee; padding: 2px 5px; border-radius: 3px; font-size: 10px; color: #333; border: 1px solid #ccc; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -164,7 +161,7 @@
     });
 
     function refreshMap() {
-        markerInstances.forEach(m => map.removeLayer(m));
+        markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
         markersData.forEach((d, i) => renderMarker(d, i));
     }
@@ -191,13 +188,14 @@
             else {
                 const dateInfo = d.date ? d.date : '未設定';
                 const todayTag = isToday ? '<br><span style="color:red; font-weight:bold;">🔥 今日開放</span>' : '';
+                const gateInfo = d.gate ? `<br><b>📍 專屬戰略點：</b><span style="color:#d32f2f;">${d.gate}</span>` : '';
                 
                 L.popup().setLatLng(e.target.getLatLng())
                     .setContent(`
                         <div style="font-family: 'Microsoft JhengHei'; padding: 5px; min-width: 150px;">
                             <strong style="font-size:14px;">🏰 ${d.city}</strong>${todayTag}<br>
                             <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
-                            <b>佔領公會：</b>${d.guild || '無'}<br>
+                            <b>佔領公會：</b>${d.guild || '無'}${gateInfo}<br>
                             <b>佔領日期：</b>${dateInfo}<br>
                             <b>城池等級：</b>Lv.${d.level || 1}
                         </div>
@@ -228,14 +226,23 @@
 
     function openForm(latlng, index = null) {
         const isEdit = index !== null;
-        const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '' };
+        const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '', gate: '' };
         const historyOptions = guildHistory.map(g => `<option value="${g}">`).join('');
+
+        // 生成 1-8 號門選單
+        let gateOptions = '<option value="">-- 無戰略點 --</option>';
+        for(let i=1; i<=8; i++){
+            const val = `${i}號門`;
+            gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`;
+        }
 
         const html = `
             <div class="popup-form">
                 <strong>${isEdit ? '編輯標記' : '新增標記'}</strong>
                 <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱">
                 <input type="date" id="f_date" value="${d.date || ''}">
+                <label style="font-size:12px; color:#666;">專屬戰略點：</label>
+                <select id="f_gate">${gateOptions}</select>
                 <input type="number" id="f_level" value="${d.level}" placeholder="等級">
                 <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會">
                 <datalist id="guild_list">${historyOptions}</datalist>
@@ -263,6 +270,7 @@
             const newData = {
                 city: document.getElementById('f_city').value || '未命名',
                 date: document.getElementById('f_date').value,
+                gate: document.getElementById('f_gate').value,
                 level: level,
                 score: level * 20,
                 guild: guild,
@@ -287,12 +295,9 @@
         }
     }
 
-    // --- 核心更新：統計與下拉排序 ---
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
         const current = sel.value;
-        
-        // 計算公會總積分
         const guildScores = {};
         markersData.forEach(m => {
             if (m.guild) {
@@ -300,10 +305,7 @@
                 guildScores[m.guild] = (guildScores[m.guild] || 0) + score;
             }
         });
-
-        // 排序公會 (由大到小)
         const sortedGuilds = Object.keys(guildScores).sort((a, b) => guildScores[b] - guildScores[a]);
-
         let options = '<option value="">選擇公會 (依總分排序)...</option>';
         sortedGuilds.forEach(g => {
             options += `<option value="${g}" ${g === current ? 'selected' : ''}>${g} (${guildScores[g]}分)</option>`;
@@ -311,14 +313,15 @@
         sel.innerHTML = options;
     }
 
-function updateStats() {
+    function updateStats() {
         const guild = document.getElementById('guild-filter').value;
         const content = document.getElementById('stat-content');
         
-        // --- 核心更新：重置所有標記樣式 ---
         markerInstances.forEach(m => {
-            const el = m.getElement();
-            if (el) el.classList.remove('highlight-marker');
+            if (m) {
+                const el = m.getElement();
+                if (el) el.classList.remove('highlight-marker');
+            }
         });
 
         if (!guild) { 
@@ -326,10 +329,8 @@ function updateStats() {
             return; 
         }
         
-        // 篩選該公會資料
         let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
         
-        // 日期排序 (由舊到新)
         mine.sort((a, b) => {
             if (!a.date && !b.date) return 0;
             if (!a.date) return 1;
@@ -339,7 +340,6 @@ function updateStats() {
 
         let html = ''; let total = 0;
         mine.forEach(m => {
-            // --- 核心更新：將地圖上對應的標記放大 ---
             const markerInstance = markerInstances[m.originalIdx];
             if (markerInstance) {
                 const el = markerInstance.getElement();
@@ -355,8 +355,9 @@ function updateStats() {
                         <span class="city-link">🏰 ${m.city}</span>
                         <b style="color:#d32f2f;">${m.score}</b>
                     </div>
-                    <div style="font-size:11px; margin-top:4px; ${dateStyle}">
-                        等級: Lv.${m.level} ${m.date ? `| 📅 ${m.date}` : '| 📅 日期未定'}
+                    <div style="font-size:11px; margin-top:4px;">
+                        ${m.gate ? `<span class="gate-tag">📍 ${m.gate}</span> ` : ''}
+                        <span style="${dateStyle}">等級: Lv.${m.level} ${m.date ? `| 📅 ${m.date}` : '| 📅 日期未定'}</span>
                     </div>
                 </div>`;
             total += m.score;
