@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v6.0 - 戰略點強化版</title>
+    <title>雲端戰略沙盤 v6.0 - 戰略點強化版 增加城池資訊欄顯示城池圖片</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
@@ -121,7 +121,7 @@
     let guildHistory = [];
     let markerInstances = [];
 
-    const imgUrl = '開季.png';
+    const imgUrl = 'https://drive.google.com/thumbnail?id=1MK2MEVjV1uaiDsTNigi5oUEyAJusPpuN&sz=w2973';
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
     const bounds = [[0, 0], [2973, 2978]]; 
     L.imageOverlay(imgUrl, bounds).addTo(map);
@@ -166,7 +166,7 @@
         markersData.forEach((d, i) => renderMarker(d, i));
     }
 
-    function renderMarker(d, i) {
+function renderMarker(d, i) {
         const today = new Date();
         const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
         const isToday = (d.date === todayStr);
@@ -187,17 +187,35 @@
             if (isAdmin) openForm(e.target.getLatLng(), i); 
             else {
                 const dateInfo = d.date ? d.date : '未設定';
-                const todayTag = isToday ? '<br><span style="color:red; font-weight:bold;">🔥 今日開放</span>' : '';
+                const todayTag = isToday ? '<span style="color:red; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🔥 今日開放</span>' : '';
                 const gateInfo = d.gate ? `<br><b>📍 專屬戰略點：</b><span style="color:#d32f2f;">${d.gate}</span>` : '';
                 
-                L.popup().setLatLng(e.target.getLatLng())
+                // 圖片路徑：根據城池名稱抓取 png
+                const cityImgPath = `${d.city}.png`;
+
+                // 為了容納 453px 寬的圖片加上右側資訊，設定 Popup 寬度
+                // 453 (圖寬) + 200 (資訊寬) + 20 (間距) = 約 673px
+                L.popup({ minWidth: 673, maxWidth: 800 }).setLatLng(e.target.getLatLng())
                     .setContent(`
-                        <div style="font-family: 'Microsoft JhengHei'; padding: 5px; min-width: 150px;">
-                            <strong style="font-size:14px;">🏰 ${d.city}</strong>${todayTag}<br>
-                            <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
-                            <b>佔領公會：</b>${d.guild || '無'}${gateInfo}<br>
-                            <b>佔領日期：</b>${dateInfo}<br>
-                            <b>城池等級：</b>Lv.${d.level || 1}
+                        <div style="display: flex; align-items: stretch; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
+                            <div style="flex: 0 0 453px; width: 453px; height: 308px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);">
+                                <img src="${cityImgPath}" 
+                                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:308px; text-align:center;\'>🏰 暫無城池圖片</div>';" 
+                                     style="width: 453px; height: 308px; object-fit: cover; display: block;">
+                            </div>
+                            
+                            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 180px;">
+                                <div style="border-bottom: 2px solid #1a73e8; padding-bottom: 8px; margin-bottom: 12px;">
+                                    <strong style="font-size:20px; color:#333;">${d.city}</strong>
+                                    ${todayTag}
+                                </div>
+                                <div style="font-size: 14px; line-height: 2; color: #444;">
+                                    <b>佔領公會：</b><br><span style="font-size:16px; color:#000;">${d.guild || '無'}</span>${gateInfo}<br>
+                                    <hr style="margin: 10px 0; border: 0; border-top: 1px dashed #ccc;">
+                                    <b>佔領日期：</b>${dateInfo}<br>
+                                    <b>城池等級：</b><span style="color:#1a73e8; font-weight:bold; font-size:16px;">Lv.${d.level || 1}</span>
+                                </div>
+                            </div>
                         </div>
                     `)
                     .openOn(map);
