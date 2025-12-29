@@ -3,13 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v5.0 - 權限控管版</title>
+    <title>雲端戰略沙盤 v5.8 - 積分排行版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; background: #222; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
-        #map { height: 100vh; width: 100%; cursor: crosshair; }
+        body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; }
         
-        .custom-marker { display: flex; align-items: center; justify-content: center; border: 2px solid black; border-radius: 50%; color: black; font-weight: bold; font-size: 13px; box-shadow: 0 0 5px rgba(0,0,0,0.5); text-align: center; }
+        /* 基礎標記 */
+        .custom-marker { 
+            display: flex; align-items: center; justify-content: center; 
+            border: 2px solid black; border-radius: 50%; 
+            color: black; font-weight: bold; font-size: 13px; 
+            box-shadow: 0 0 5px rgba(0,0,0,0.5); text-align: center;
+            transform-origin: center !important;
+        }
+        
         .bg-pink { background-color: #ff69b4 !important; }
         .bg-blue { background-color: #87ceeb !important; }
         .bg-green { background-color: #90ee90 !important; }
@@ -19,43 +27,47 @@
         .bg-silver { background-color: #c0c0c0 !important; }
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
 
-        #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto; }
-        #stat-panel h3 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-        
-        .stat-item { font-size: 13px; margin: 5px 0; padding: 8px 5px; border-bottom: 1px solid #ddd; cursor: pointer; transition: background 0.2s; }
-        .stat-item:hover { background: rgba(0,0,0,0.05); }
-        .city-link { color: #1a73e8; font-weight: bold; text-decoration: underline; }
-        .stat-date { display: block; font-size: 10px; color: #d32f2f; font-weight: bold; margin-top: 2px; }
-        
-        .total-score { font-weight: bold; color: #d32f2f; font-size: 15px; margin-top: 10px; padding-top: 5px; border-top: 2px solid #d32f2f; }
+        /* 今日動態效果 */
+        @keyframes pulse-today {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+        }
+        .today-active:after {
+            content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            border: 3px solid red; animation: pulse-today 2s infinite; pointer-events: none; box-sizing: border-box;
+        }
+        .today-active { z-index: 1000 !important; border: 3px solid red !important; }
 
+        /* UI 面板 */
+        #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
+        .stat-item { font-size: 13px; margin: 5px 0; padding: 10px 8px; border-bottom: 1px solid #ddd; cursor: pointer; transition: 0.2s; }
+        .stat-item:hover { background: rgba(0,0,0,0.05); }
+        .city-link { color: #1a73e8; font-weight: bold; }
+        
         .toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; gap: 5px; }
         .toolbar button { padding: 8px 12px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px; font-weight: bold; }
         #admin-btn { background: #d32f2f; }
         #admin-btn.logged-in { background: #2e7d32; }
 
         .popup-form { display: flex; flex-direction: column; gap: 8px; min-width: 220px; padding: 5px; }
-        .popup-form label { font-size: 12px; color: #333; font-weight: bold; }
-        .popup-form input, .popup-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        .popup-form input, .popup-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         .btn-group { display: flex; gap: 5px; margin-top: 10px; }
-        .btn-save { background: #2e7d32; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px; flex: 2; font-weight: bold; }
-        .btn-del { background: #d32f2f; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px; flex: 1; }
+        .btn-save { background: #2e7d32; color: white; border: none; padding: 10px; cursor: pointer; flex: 2; border-radius: 4px; }
+        .btn-del { background: #d32f2f; color: white; border: none; padding: 10px; cursor: pointer; flex: 1; border-radius: 4px; }
         
         .hint { position: absolute; bottom: 15px; left: 15px; z-index: 1000; color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-size: 12px; pointer-events: none; }
         .sync-status { color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right; }
-        
-        /* 唯讀模式下的標籤提示 */
-        .readonly-tag { position: absolute; bottom: 15px; right: 15px; z-index: 1000; background: #555; color: white; padding: 5px 15px; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div id="stat-panel">
-    <h3>公會勢力統計</h3>
-    <select id="guild-filter" style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 4px;">
-        <option value="">選擇公會...</option>
+    <h3 style="margin-top:0;">公會勢力排行</h3>
+    <select id="guild-filter" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer;">
+        <option value="">計算積分中...</option>
     </select>
-    <div id="stat-content">等待資料中...</div>
+    <div id="stat-content">請選擇公會查看詳情</div>
     <div class="sync-status" id="status-text">● 雲端連線中</div>
 </div>
 
@@ -64,7 +76,7 @@
     <button id="export-btn" style="display:none;">💾 備份數據</button>
 </div>
 
-<div class="hint" id="action-hint">目前模式：唯讀 (點擊列表可跳轉)</div>
+<div class="hint" id="action-hint">勢力排行已同步 | 積分規則：城池等級 × 20</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -88,9 +100,8 @@
     const db = getDatabase(app);
     const cloudRef = ref(db, 'war_map_data');
 
-    // --- 權限管理變數 ---
     let isAdmin = false;
-    const ADMIN_PASSWORD = "wu0 u86"; // 在此設定你的管理密碼
+    const ADMIN_PASSWORD = "wu0 u86"; 
 
     let markersData = [];
     let guildHistory = [];
@@ -98,44 +109,30 @@
 
     const imgUrl = '開季.png';
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
-    const bounds = [[0, 0], [2978, 2973]];
+    const bounds = [[0, 0], [2973, 2978]]; 
     L.imageOverlay(imgUrl, bounds).addTo(map);
     map.fitBounds(bounds);
 
-    // --- 權限切換邏輯 ---
     const adminBtn = document.getElementById('admin-btn');
     const exportBtn = document.getElementById('export-btn');
-    const hintText = document.getElementById('action-hint');
-
     adminBtn.onclick = () => {
         if (!isAdmin) {
-            const pass = prompt("請輸入管理員密碼：");
+            const pass = prompt("管理密碼：");
             if (pass === ADMIN_PASSWORD) {
                 isAdmin = true;
                 adminBtn.innerText = "🔒 退出管理";
                 adminBtn.classList.add('logged-in');
                 exportBtn.style.display = "block";
-                hintText.innerText = "操作：[右鍵] 新增標記 | [拖拽] 移動位置";
-                alert("管理員模式已解鎖");
-                refreshMap(); // 重新渲染以啟用拖拽
-            } else {
-                alert("密碼錯誤！");
+                refreshMap();
             }
         } else {
             isAdmin = false;
             adminBtn.innerText = "🔓 管理員登入";
             adminBtn.classList.remove('logged-in');
             exportBtn.style.display = "none";
-            hintText.innerText = "目前模式：唯讀 (點擊列表可跳轉)";
-            refreshMap(); // 重新渲染以停用拖拽
+            refreshMap();
         }
     };
-
-    function pushToCloud() {
-        if (!isAdmin) return;
-        set(cloudRef, { markers: markersData, guilds: guildHistory });
-        document.getElementById('status-text').innerText = "● 正在同步...";
-    }
 
     onValue(cloudRef, (snapshot) => {
         const data = snapshot.val();
@@ -156,32 +153,45 @@
     }
 
     function renderMarker(d, i) {
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        const isToday = (d.date === todayStr);
+
         const displayName = d.guild ? d.guild.slice(0, 2) : '?';
+        
         const icon = L.divIcon({
-            className: `custom-marker ${d.color}`,
+            className: `custom-marker ${d.color} ${isToday ? 'today-active' : ''}`,
             html: `<span>${displayName}</span>`,
-            iconSize: [36, 36]
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
         });
         
-        // 根據 isAdmin 決定是否可拖拽
         const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
         
         m.on('click', (e) => { 
             L.DomEvent.stopPropagation(e); 
-            // 只有管理員可以打開編輯窗
-            if (isAdmin) {
-                openForm(e.target.getLatLng(), i); 
-            } else {
-                // 非管理員點擊僅顯示資訊（可自訂）
+            if (isAdmin) openForm(e.target.getLatLng(), i); 
+            else {
+                const dateInfo = d.date ? d.date : '未設定';
+                const todayTag = isToday ? '<br><span style="color:red; font-weight:bold;">🔥 今日開放</span>' : '';
+                
                 L.popup().setLatLng(e.target.getLatLng())
-                    .setContent(`<b>${d.city}</b><br>佔領：${d.guild || '無'}<br>日期：${d.date || '未定'}`)
+                    .setContent(`
+                        <div style="font-family: 'Microsoft JhengHei'; padding: 5px; min-width: 150px;">
+                            <strong style="font-size:14px;">🏰 ${d.city}</strong>${todayTag}<br>
+                            <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
+                            <b>佔領公會：</b>${d.guild || '無'}<br>
+                            <b>佔領日期：</b>${dateInfo}<br>
+                            <b>城池等級：</b>Lv.${d.level || 1}
+                        </div>
+                    `)
                     .openOn(map);
             }
         });
 
-        m.on('dragend', () => { 
+        m.on('dragend', (e) => { 
             if (isAdmin) {
-                markersData[i].latlng = m.getLatLng(); 
+                markersData[i].latlng = e.target.getLatLng(); 
                 pushToCloud(); 
             }
         });
@@ -193,21 +203,13 @@
         const marker = markerInstances[index];
         if (data && marker) {
             map.flyTo(data.latlng, 1, { duration: 1.2 });
-            setTimeout(() => { 
-                // 跳轉後，如果是管理員就開編輯窗，不是就開唯讀資訊
-                marker.fire('click'); 
-            }, 1300);
+            setTimeout(() => { marker.fire('click'); }, 1300);
         }
     };
 
-    // 右鍵新增功能：僅限管理員
-    map.on('contextmenu', (e) => { 
-        if (isAdmin) openForm(e.latlng); 
-        else alert("唯讀模式，無法新增標記。");
-    });
+    map.on('contextmenu', (e) => { if (isAdmin) openForm(e.latlng); });
 
     function openForm(latlng, index = null) {
-        if (!isAdmin) return;
         const isEdit = index !== null;
         const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '' };
         const historyOptions = guildHistory.map(g => `<option value="${g}">`).join('');
@@ -215,16 +217,11 @@
         const html = `
             <div class="popup-form">
                 <strong>${isEdit ? '編輯標記' : '新增標記'}</strong>
-                <label>城池名稱</label>
-                <input type="text" id="f_city" value="${d.city}" placeholder="輸入名稱">
-                <label>日期</label>
+                <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱">
                 <input type="date" id="f_date" value="${d.date || ''}">
-                <label>等級 (Lv)</label>
-                <input type="number" id="f_level" value="${d.level}" min="1">
-                <label>佔領公會</label>
-                <input type="text" id="f_guild" list="guild_list" value="${d.guild}">
+                <input type="number" id="f_level" value="${d.level}" placeholder="等級">
+                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會">
                 <datalist id="guild_list">${historyOptions}</datalist>
-                <label>顯示顏色</label>
                 <select id="f_color">
                     <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服</option>
                     <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服</option>
@@ -273,53 +270,82 @@
         }
     }
 
-    function updateStats() {
-        const guild = document.getElementById('guild-filter').value;
-        const content = document.getElementById('stat-content');
-        if (!guild) { content.innerHTML = "請先選擇公會"; return; }
-        
-        let mine = markersData.map((m, originalIdx) => ({...m, originalIdx}))
-                                .filter(m => m.guild === guild);
-
-        mine.sort((a, b) => {
-            if (!a.date && !b.date) return 0;
-            if (!a.date) return 1;
-            if (!b.date) return -1;
-            return new Date(a.date) - new Date(b.date);
-        });
-
-        if (mine.length === 0) {
-            content.innerHTML = `公會 [${guild}] 目前無領地`;
-            return;
-        }
-
-        let html = ''; let total = 0;
-        mine.forEach(m => {
-            html += `<div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
-                        🏰 <span class="city-link">${m.city}</span> (Lv.${m.level}) <span style="float:right">${m.score}</span>
-                        ${m.date ? `<span class="stat-date">📅 日期: ${m.date}</span>` : '<span class="stat-date">📅 未設定日期</span>'}
-                     </div>`;
-            total += m.score;
-        });
-        html += `<div class="total-score">總積分 <span style="float:right">${total}</span></div>`;
-        content.innerHTML = html;
-    }
-
+    // --- 核心更新：統計與下拉排序 ---
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
         const current = sel.value;
-        const guilds = [...new Set(markersData.map(m => m.guild).filter(g => g))];
-        let options = '<option value="">選擇公會...</option>';
-        guilds.forEach(g => { options += `<option value="${g}" ${g === current ? 'selected' : ''}>${g}</option>`; });
+        
+        // 計算公會總積分
+        const guildScores = {};
+        markersData.forEach(m => {
+            if (m.guild) {
+                const score = parseInt(m.score) || 0;
+                guildScores[m.guild] = (guildScores[m.guild] || 0) + score;
+            }
+        });
+
+        // 排序公會 (由大到小)
+        const sortedGuilds = Object.keys(guildScores).sort((a, b) => guildScores[b] - guildScores[a]);
+
+        let options = '<option value="">選擇公會 (依總分排序)...</option>';
+        sortedGuilds.forEach(g => {
+            options += `<option value="${g}" ${g === current ? 'selected' : ''}>${g} (${guildScores[g]}分)</option>`;
+        });
         sel.innerHTML = options;
     }
 
-    document.getElementById('guild-filter').onchange = updateStats;
+    function updateStats() {
+        const guild = document.getElementById('guild-filter').value;
+        const content = document.getElementById('stat-content');
+        if (!guild) { content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; return; }
+        
+        let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
+        
+        // --- 核心更新：日期排序由遠到近 (由舊到新) ---
+        mine.sort((a, b) => {
+            // 如果沒設定日期，將其排在最後
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            
+            // 日期比較：a < b 則結果為負，a 就會排在前面
+            return new Date(a.date) - new Date(b.date);
+        });
 
+        let html = ''; let total = 0;
+        mine.forEach(m => {
+            // 判定是否為今日，給予特殊顏色提醒
+            const today = new Date().toISOString().split('T')[0];
+            const dateStyle = m.date === today ? 'color: #d32f2f; font-weight: bold;' : 'color: #666;';
+
+            html += `
+                <div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="city-link">🏰 ${m.city}</span>
+                        <b style="color:#d32f2f;">${m.score}</b>
+                    </div>
+                    <div style="font-size:11px; margin-top:4px; ${dateStyle}">
+                        等級: Lv.${m.level} ${m.date ? `| 📅 ${m.date}` : '| 📅 日期未定'}
+                    </div>
+                </div>`;
+            total += m.score;
+        });
+        
+        html += `
+            <div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">
+                公會總戰略積分：<span style="float:right; font-size:1.1em;">${total}</span>
+            </div>`;
+        content.innerHTML = html;
+    }
+
+    function pushToCloud() {
+        if (!isAdmin) return;
+        set(cloudRef, { markers: markersData, guilds: guildHistory });
+    }
+
+    document.getElementById('guild-filter').onchange = updateStats;
     document.getElementById('export-btn').onclick = () => {
-        if(!isAdmin) return;
-        const data = { markers: markersData, guilds: guildHistory };
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify({ markers: markersData, guilds: guildHistory })], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `沙盤備份_${new Date().toLocaleDateString()}.json`;
