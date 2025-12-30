@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v6.0 - 戰略點強化版 增加城池資訊欄顯示城池圖片</title>
+    <title>雲端戰略沙盤 v6.0 - 戰略點強化版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
@@ -35,20 +35,32 @@
             box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important;
             transition: all 0.3s ease;
         }
-
         .highlight-marker span { font-size: 16px !important; }
 
-        /* 今日動態效果 */
-        @keyframes pulse-today {
+        /* 特效關鍵影格 */
+        @keyframes pulse-red {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
             50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
         }
+        @keyframes pulse-orange {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 165, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); }
+        }
+
+        /* 狀態類名 */
+        .today-active { z-index: 1000 !important; border: 3px solid red !important; }
         .today-active:after {
             content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
-            border: 3px solid red; animation: pulse-today 2s infinite; pointer-events: none; box-sizing: border-box;
+            border: 3px solid red; animation: pulse-red 2s infinite; pointer-events: none; box-sizing: border-box;
         }
-        .today-active { z-index: 1000 !important; border: 3px solid red !important; }
+
+        .future-active { z-index: 999 !important; border: 3px solid orange !important; }
+        .future-active:after {
+            content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            border: 3px solid orange; animation: pulse-orange 2s infinite; pointer-events: none; box-sizing: border-box;
+        }
 
         /* UI 面板 */
         #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
@@ -90,7 +102,7 @@
     <button id="export-btn" style="display:none;">💾 備份數據</button>
 </div>
 
-<div class="hint" id="action-hint">勢力排行已同步 | 積分規則：城池等級 × 20</div>
+<div class="hint" id="action-hint">紅色閃爍：今日開放 | 橘色閃爍：下次預告</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -163,18 +175,50 @@
     function refreshMap() {
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
-        markersData.forEach((d, i) => renderMarker(d, i));
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+        // 邏輯 1: 找出是否有今天
+        const hasToday = markersData.some(d => d.date === todayStr);
+        let targetEffectDate = todayStr;
+        let isFutureType = false;
+
+        // 邏輯 2: 如果沒有今天，找未來最接近的一天
+        if (!hasToday) {
+            let closestFuture = null;
+            markersData.forEach(d => {
+                if (d.date) {
+                    const dDate = new Date(d.date);
+                    dDate.setHours(0, 0, 0, 0);
+                    if (dDate > today) {
+                        if (!closestFuture || dDate < closestFuture) closestFuture = dDate;
+                    }
+                }
+            });
+            if (closestFuture) {
+                targetEffectDate = `${closestFuture.getFullYear()}-${String(closestFuture.getMonth()+1).padStart(2,'0')}-${String(closestFuture.getDate()).padStart(2,'0')}`;
+                isFutureType = true;
+            }
+        }
+
+        markersData.forEach((d, i) => renderMarker(d, i, targetEffectDate, isFutureType));
     }
 
-function renderMarker(d, i) {
+    function renderMarker(d, i, targetEffectDate, isFutureType) {
         const today = new Date();
         const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-        const isToday = (d.date === todayStr);
+        
+        // 判斷特效類名
+        let effectClass = "";
+        if (d.date === targetEffectDate && d.date !== "") {
+            effectClass = isFutureType ? "future-active" : "today-active";
+        }
 
         const displayName = d.guild ? d.guild.slice(0, 2) : '?';
-        
         const icon = L.divIcon({
-            className: `custom-marker ${d.color} ${isToday ? 'today-active' : ''}`,
+            className: `custom-marker ${d.color} ${effectClass}`,
             html: `<span>${displayName}</span>`,
             iconSize: [34, 34],
             iconAnchor: [17, 17]
@@ -187,14 +231,18 @@ function renderMarker(d, i) {
             if (isAdmin) openForm(e.target.getLatLng(), i); 
             else {
                 const dateInfo = d.date ? d.date : '未設定';
-                const todayTag = isToday ? '<span style="color:red; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🔥 今日開放</span>' : '';
-                const gateInfo = d.gate ? `<br><b>📍 專屬戰略點：</b><span style="color:#d32f2f;">${d.gate}</span>` : '';
                 
-                // 圖片路徑：根據城池名稱抓取 png
+                // 資訊欄標籤判斷
+                let todayTag = "";
+                if (d.date === todayStr) {
+                    todayTag = '<span style="color:red; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🔥 今日開放</span>';
+                } else if (isFutureType && d.date === targetEffectDate) {
+                    todayTag = '<span style="color:orange; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🕒 下次開放預告</span>';
+                }
+
+                const gateInfo = d.gate ? `<br><b>📍 專屬戰略點：</b><span style="color:#d32f2f;">${d.gate}</span>` : '';
                 const cityImgPath = `${d.city}.png`;
 
-                // 為了容納 453px 寬的圖片加上右側資訊，設定 Popup 寬度
-                // 453 (圖寬) + 200 (資訊寬) + 20 (間距) = 約 673px
                 L.popup({ minWidth: 673, maxWidth: 800 }).setLatLng(e.target.getLatLng())
                     .setContent(`
                         <div style="display: flex; align-items: stretch; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
@@ -203,7 +251,6 @@ function renderMarker(d, i) {
                                      onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:308px; text-align:center;\'>🏰 暫無城池圖片</div>';" 
                                      style="width: 453px; height: 308px; object-fit: cover; display: block;">
                             </div>
-                            
                             <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 180px;">
                                 <div style="border-bottom: 2px solid #1a73e8; padding-bottom: 8px; margin-bottom: 12px;">
                                     <strong style="font-size:20px; color:#333;">${d.city}</strong>
@@ -246,14 +293,11 @@ function renderMarker(d, i) {
         const isEdit = index !== null;
         const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '', gate: '' };
         const historyOptions = guildHistory.map(g => `<option value="${g}">`).join('');
-
-        // 生成 1-8 號門選單
         let gateOptions = '<option value="">-- 無戰略點 --</option>';
         for(let i=1; i<=8; i++){
             const val = `${i}號門`;
             gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`;
         }
-
         const html = `
             <div class="popup-form">
                 <strong>${isEdit ? '編輯標記' : '新增標記'}</strong>
@@ -279,9 +323,7 @@ function renderMarker(d, i) {
                     ${isEdit ? `<button class="btn-del" id="pop-del">刪除</button>` : ''}
                 </div>
             </div>`;
-            
         L.popup({ minWidth: 230 }).setLatLng(latlng).setContent(html).openOn(map);
-
         document.getElementById('pop-save').onclick = () => {
             const guild = document.getElementById('f_guild').value;
             const level = parseInt(document.getElementById('f_level').value) || 1;
@@ -301,7 +343,6 @@ function renderMarker(d, i) {
             pushToCloud();
             map.closePopup();
         };
-
         if(isEdit) {
             document.getElementById('pop-del').onclick = () => {
                 if(confirm('確定刪除？')) {
@@ -334,39 +375,16 @@ function renderMarker(d, i) {
     function updateStats() {
         const guild = document.getElementById('guild-filter').value;
         const content = document.getElementById('stat-content');
-        
-        markerInstances.forEach(m => {
-            if (m) {
-                const el = m.getElement();
-                if (el) el.classList.remove('highlight-marker');
-            }
-        });
-
-        if (!guild) { 
-            content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; 
-            return; 
-        }
-        
+        markerInstances.forEach(m => { if (m) { const el = m.getElement(); if (el) el.classList.remove('highlight-marker'); } });
+        if (!guild) { content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; return; }
         let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
-        
-        mine.sort((a, b) => {
-            if (!a.date && !b.date) return 0;
-            if (!a.date) return 1;
-            if (!b.date) return -1;
-            return new Date(a.date) - new Date(b.date);
-        });
-
+        mine.sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return new Date(a.date) - new Date(b.date); });
         let html = ''; let total = 0;
         mine.forEach(m => {
             const markerInstance = markerInstances[m.originalIdx];
-            if (markerInstance) {
-                const el = markerInstance.getElement();
-                if (el) el.classList.add('highlight-marker');
-            }
-
+            if (markerInstance) { const el = markerInstance.getElement(); if (el) el.classList.add('highlight-marker'); }
             const today = new Date().toISOString().split('T')[0];
             const dateStyle = m.date === today ? 'color: #d32f2f; font-weight: bold;' : 'color: #666;';
-
             html += `
                 <div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -380,18 +398,11 @@ function renderMarker(d, i) {
                 </div>`;
             total += m.score;
         });
-        
-        html += `
-            <div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">
-                公會總戰略積分：<span style="float:right; font-size:1.1em;">${total}</span>
-            </div>`;
+        html += `<div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">公會總戰略積分：<span style="float:right; font-size:1.1em;">${total}</span></div>`;
         content.innerHTML = html;
     }
 
-    function pushToCloud() {
-        if (!isAdmin) return;
-        set(cloudRef, { markers: markersData, guilds: guildHistory });
-    }
+    function pushToCloud() { if (!isAdmin) return; set(cloudRef, { markers: markersData, guilds: guildHistory }); }
 
     document.getElementById('guild-filter').onchange = updateStats;
     document.getElementById('export-btn').onclick = () => {
