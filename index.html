@@ -27,30 +27,72 @@
         .bg-purple { background-color: #BE77FF !important; }
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
       
-        /* 特效與狀態 (保留原本邏輯) */
-        .highlight-marker { width: 48px !important; height: 48px !important; margin-left: -24px !important; margin-top: -24px !important; z-index: 999 !important; border: 3px solid gold !important; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important; transition: all 0.3s ease; }
-        @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
-        .today-active { z-index: 1000 !important; border: 3px solid red !important; }
-        .today-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid red; animation: pulse-red 2s infinite; pointer-events: none; box-sizing: border-box; }
+        /* 被選中公會的標記突顯樣式 */
+        .highlight-marker {
+            width: 48px !important; height: 48px !important;
+            margin-left: -24px !important; margin-top: -24px !important;
+            z-index: 999 !important; border: 3px solid gold !important;
+            box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important;
+            transition: all 0.3s ease;
+        }
+        .highlight-marker span { font-size: 16px !important; }
 
-        /* UI 面板 - 左側 */
+        /* 特效關鍵影格 */
+        @keyframes pulse-red {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+        }
+        @keyframes pulse-orange {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 165, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); }
+        }
+
+        /* 狀態類名 */
+        .today-active { z-index: 1000 !important; border: 3px solid red !important; }
+        .today-active:after {
+            content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            border: 3px solid red; animation: pulse-red 2s infinite; pointer-events: none; box-sizing: border-box;
+        }
+
+        .future-active { z-index: 999 !important; border: 3px solid orange !important; }
+        .future-active:after {
+            content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            border: 3px solid orange; animation: pulse-orange 2s infinite; pointer-events: none; box-sizing: border-box;
+        }
+
+        /* UI 面板 - 左側排行 */
         #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
         
         /* UI 面板 - 右側行軍計算器 */
-        #calc-panel { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 220px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-top: 5px solid #c53030; }
-        .calc-title { margin: 0 0 10px 0; font-size: 16px; color: #333; display: flex; align-items: center; gap: 5px; }
-        .calc-group { margin-bottom: 10px; }
-        .calc-group label { display: block; font-size: 12px; color: #666; margin-bottom: 3px; }
-        .calc-inputs { display: flex; gap: 5px; }
-        .calc-inputs input { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
-        #btn-calculate { width: 100%; padding: 8px; background: #c53030; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; }
-        #calc-res { margin-top: 12px; padding: 10px; background: #fff5f5; border-radius: 4px; border: 1px dashed #feb2b2; font-size: 13px; display: none; }
+        #march-calc-panel { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-top: 5px solid #c53030; }
+        .calc-h { margin: 0 0 10px 0; font-size: 15px; color: #333; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .calc-row { margin-bottom: 8px; }
+        .calc-row label { display: block; font-size: 11px; color: #666; }
+        .calc-in-group { display: flex; gap: 4px; }
+        .calc-in-group input { width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; }
+        #btn-march-calc { width: 100%; padding: 7px; background: #c53030; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        #march-result { margin-top: 10px; padding: 8px; background: #fff5f5; border-radius: 4px; font-size: 12px; line-height: 1.5; border: 1px dashed #feb2b2; display: none; }
 
+        .stat-item { font-size: 13px; margin: 5px 0; padding: 10px 8px; border-bottom: 1px solid #ddd; cursor: pointer; transition: 0.2s; }
+        .stat-item:hover { background: rgba(0,0,0,0.05); }
+        .city-link { color: #1a73e8; font-weight: bold; }
+        
         .toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; gap: 5px; }
         .toolbar button { padding: 8px 12px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px; font-weight: bold; }
         #admin-btn { background: #d32f2f; }
+        #admin-btn.logged-in { background: #2e7d32; }
+
+        .popup-form { display: flex; flex-direction: column; gap: 8px; min-width: 220px; padding: 5px; }
+        .popup-form input, .popup-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-save { background: #2e7d32; color: white; border: none; padding: 10px; cursor: pointer; flex: 2; border-radius: 4px; }
+        .btn-del { background: #d32f2f; color: white; border: none; padding: 10px; cursor: pointer; flex: 1; border-radius: 4px; }
         
         .hint { position: absolute; bottom: 15px; left: 15px; z-index: 1000; color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-size: 12px; pointer-events: none; }
+        .sync-status { color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right; }
+        .gate-tag { background: #eee; padding: 2px 5px; border-radius: 3px; font-size: 10px; color: #333; border: 1px solid #ccc; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -61,27 +103,27 @@
         <option value="">計算積分中...</option>
     </select>
     <div id="stat-content">請選擇公會查看詳情</div>
-    <div style="color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right;" id="status-text">● 雲端連線中</div>
+    <div class="sync-status" id="status-text">● 雲端連線中</div>
 </div>
 
-<div id="calc-panel">
-    <h4 class="calc-title">🏹 行軍時間計算</h4>
-    <div class="calc-group">
-        <label>起點座標 (X, Y)</label>
-        <div class="calc-inputs">
-            <input type="number" id="x1" placeholder="X1">
-            <input type="number" id="y1" placeholder="Y1">
+<div id="march-calc-panel">
+    <div class="calc-h">🏹 行軍時間計算</div>
+    <div class="calc-row">
+        <label>起點 (X, Y)</label>
+        <div class="calc-in-group">
+            <input type="number" id="m_x1" placeholder="X">
+            <input type="number" id="m_y1" placeholder="Y">
         </div>
     </div>
-    <div class="calc-group">
-        <label>終點座標 (X, Y)</label>
-        <div class="calc-inputs">
-            <input type="number" id="x2" placeholder="X2">
-            <input type="number" id="y2" placeholder="Y2">
+    <div class="calc-row">
+        <label>終點 (X, Y)</label>
+        <div class="calc-in-group">
+            <input type="number" id="m_x2" placeholder="X">
+            <input type="number" id="m_y2" placeholder="Y">
         </div>
     </div>
-    <button id="btn-calculate">開始計算</button>
-    <div id="calc-res"></div>
+    <button id="btn-march-calc">開始計算</button>
+    <div id="march-result"></div>
 </div>
 
 <div class="toolbar">
@@ -89,7 +131,7 @@
     <button id="export-btn" style="display:none;">💾 備份數據</button>
 </div>
 
-<div class="hint">紅色閃爍：今日開放 | 橘色閃爍：下次預告</div>
+<div class="hint" id="action-hint">紅色閃爍：今日開放 | 橘色閃爍：下次預告</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -98,11 +140,16 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+    // Firebase 配置 (與 6.0 相同)
     const firebaseConfig = {
         apiKey: "AIzaSyC-q2akyvasJ9XfccsNPrXWoxWOWlRq2yQ",
         authDomain: "revelation-sandtable.firebaseapp.com",
         databaseURL: "https://revelation-sandtable-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "revelation-sandtable"
+        projectId: "revelation-sandtable",
+        storageBucket: "revelation-sandtable.firebasestorage.app",
+        messagingSenderId: "572907835922",
+        appId: "1:572907835922:web:505556c77ea56cfac83ecb",
+        measurementId: "G-3K2YS695G9"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -110,10 +157,12 @@
     const cloudRef = ref(db, 'war_map_data');
 
     let isAdmin = false;
+    const ADMIN_PASSWORD = "wu0 u86"; 
+
     let markersData = [];
+    let guildHistory = [];
     let markerInstances = [];
 
-    // --- 地圖初始化 ---
     const imgUrl = 'https://drive.google.com/thumbnail?id=1MK2MEVjV1uaiDsTNigi5oUEyAJusPpuN&sz=w2973';
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
     const bounds = [[0, 0], [2973, 2978]]; 
@@ -121,81 +170,277 @@
     map.fitBounds(bounds);
 
     // --- 行軍計算邏輯 ---
-    document.getElementById('btn-calculate').onclick = () => {
-        const x1 = parseInt(document.getElementById('x1').value);
-        const y1 = parseInt(document.getElementById('y1').value);
-        const x2 = parseInt(document.getElementById('x2').value);
-        const y2 = parseInt(document.getElementById('y2').value);
+    document.getElementById('btn-march-calc').onclick = () => {
+        const x1 = parseInt(document.getElementById('m_x1').value);
+        const y1 = parseInt(document.getElementById('m_y1').value);
+        const x2 = parseInt(document.getElementById('m_x2').value);
+        const y2 = parseInt(document.getElementById('m_y2').value);
 
         if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
-            alert("請完整輸入起點與終點座標");
-            return;
+            alert("請完整輸入起點與終點座標"); return;
         }
 
-        // 公式: ABS(x1-x2) + ABS(y1-y2) - 1
-        const distance = Math.abs(x1 - x2) + Math.abs(y1 - y2) - 1;
-        const finalDist = distance < 0 ? 0 : distance; // 預防距離為負
-        const totalSeconds = finalDist * 4;
+        // 距離公式: ABS(x1-x2) + ABS(y1-y2) - 1
+        let distance = Math.abs(x1 - x2) + Math.abs(y1 - y2) - 1;
+        if (distance < 0) distance = 0; // 起終點相同時設為0
 
-        // 轉換為 hh:mm:ss
-        const h = Math.floor(totalSeconds / 3600);
-        const m = Math.floor((totalSeconds % 3600) / 60);
-        const s = totalSeconds % 60;
+        // 時間計算: 距離 * 4 秒
+        const totalSec = distance * 4;
+        
+        // 格式化 hh:mm:ss
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
         const timeStr = [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
 
-        const resDiv = document.getElementById('calc-res');
+        const resDiv = document.getElementById('march-result');
         resDiv.style.display = 'block';
-        resDiv.innerHTML = `
-            總距離：<b>${finalDist}</b> 格<br>
-            預計耗時：<b style="color:#c53030; font-size:16px;">${timeStr}</b>
-        `;
+        resDiv.innerHTML = `距離：<b>${distance}</b> 格<br>耗時：<b style="color:#c53030; font-size:14px;">${timeStr}</b>`;
     };
 
-    // --- Firebase & 原有地圖邏輯 (縮減重複部分，保持功能) ---
+    // --- 以下為 v6.0 原有邏輯 ---
+
+    const adminBtn = document.getElementById('admin-btn');
+    const exportBtn = document.getElementById('export-btn');
+    adminBtn.onclick = () => {
+        if (!isAdmin) {
+            const pass = prompt("管理密碼：");
+            if (pass === ADMIN_PASSWORD) {
+                isAdmin = true;
+                adminBtn.innerText = "🔒 退出管理";
+                adminBtn.classList.add('logged-in');
+                exportBtn.style.display = "block";
+                refreshMap();
+            }
+        } else {
+            isAdmin = false;
+            adminBtn.innerText = "🔓 管理員登入";
+            adminBtn.classList.remove('logged-in');
+            exportBtn.style.display = "none";
+            refreshMap();
+        }
+    };
+
     onValue(cloudRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             markersData = data.markers || [];
+            guildHistory = data.guilds || [];
             refreshMap();
             updateDropdown();
+            updateStats();
             document.getElementById('status-text').innerText = "● 雲端已同步";
         }
     });
 
     function refreshMap() {
-        markerInstances.forEach(m => m && map.removeLayer(m));
+        markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
-        markersData.forEach((d, i) => {
-            const icon = L.divIcon({
-                className: `custom-marker ${d.color}`,
-                html: `<span>${d.guild ? d.guild.slice(0, 2) : '?'}</span>`,
-                iconSize: [34, 34],
-                iconAnchor: [17, 17]
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        const hasToday = markersData.some(d => d.date === todayStr);
+        let targetEffectDate = todayStr;
+        let isFutureType = false;
+        if (!hasToday) {
+            let closestFuture = null;
+            markersData.forEach(d => {
+                if (d.date) {
+                    const dDate = new Date(d.date);
+                    dDate.setHours(0, 0, 0, 0);
+                    if (dDate > today) {
+                        if (!closestFuture || dDate < closestFuture) closestFuture = dDate;
+                    }
+                }
             });
-            const m = L.marker(d.latlng, { icon }).addTo(map);
-            m.on('click', () => {
-                // 顯示資訊彈窗 (保持您原本的設計)
-                L.popup({ minWidth: 400 }).setLatLng(d.latlng).setContent(`
-                    <div style="padding:10px;">
-                        <h3>${d.city} (Lv.${d.level})</h3>
-                        <p>佔領：${d.guild || '無'}</p>
-                        <p style="font-size:12px; color:#666;">點擊座標可快速填入計算器(開發中)</p>
-                    </div>
-                `).openOn(map);
-            });
-            markerInstances[i] = m;
-        });
+            if (closestFuture) {
+                targetEffectDate = `${closestFuture.getFullYear()}-${String(closestFuture.getMonth()+1).padStart(2,'0')}-${String(closestFuture.getDate()).padStart(2,'0')}`;
+                isFutureType = true;
+            }
+        }
+        markersData.forEach((d, i) => renderMarker(d, i, targetEffectDate, isFutureType));
     }
 
-    // (此處省略其餘您原本的 updateStats, updateDropdown, pushToCloud 等函數，請確保保留在您的文件中)
-    // 管理員登入按鈕邏輯...
-    document.getElementById('admin-btn').onclick = () => {
-        const pass = prompt("管理密碼：");
-        if (pass === "wu0 u86") {
-            isAdmin = true;
-            document.getElementById('admin-btn').innerText = "🔒 退出管理";
-            document.getElementById('export-btn').style.display = "block";
+    function renderMarker(d, i, targetEffectDate, isFutureType) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        let effectClass = "";
+        if (d.date === targetEffectDate && d.date !== "") {
+            effectClass = isFutureType ? "future-active" : "today-active";
         }
+        const displayName = d.guild ? d.guild.slice(0, 2) : '?';
+        const icon = L.divIcon({
+            className: `custom-marker ${d.color} ${effectClass}`,
+            html: `<span>${displayName}</span>`,
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
+        });
+        const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
+        m.on('click', (e) => { 
+            L.DomEvent.stopPropagation(e); 
+            if (isAdmin) openForm(e.target.getLatLng(), i); 
+            else {
+                const dateInfo = d.date ? d.date : '未設定';
+                let todayTag = "";
+                if (d.date === todayStr) {
+                    todayTag = '<span style="color:red; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🔥 今日開放</span>';
+                } else if (isFutureType && d.date === targetEffectDate) {
+                    todayTag = '<span style="color:orange; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🕒 下次開放預告</span>';
+                }
+                const gateInfo = d.gate ? `<br><b>📍 專屬戰略點：</b><span style="color:#d32f2f;">${d.gate}</span>` : '';
+                L.popup({ minWidth: 673, maxWidth: 800 }).setLatLng(e.target.getLatLng()).setContent(`
+                    <div style="display: flex; align-items: stretch; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
+                        <div style="flex: 0 0 453px; width: 453px; height: 308px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
+                            <img src="${d.city}.png" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:308px; text-align:center;\'>🏰 暫無圖片</div>';" style="width: 453px; height: 308px; object-fit: cover; display: block;">
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 180px;">
+                            <div style="border-bottom: 2px solid #1a73e8; padding-bottom: 8px; margin-bottom: 12px;">
+                                <strong style="font-size:20px; color:#333;">${d.city}</strong>${todayTag}
+                            </div>
+                            <div style="font-size: 14px; line-height: 2; color: #444;">
+                                <b>佔領公會：</b><br><span style="font-size:16px; color:#000;">${d.guild || '無'}</span>${gateInfo}<br>
+                                <hr style="margin: 10px 0; border: 0; border-top: 1px dashed #ccc;">
+                                <b>佔領日期：</b>${dateInfo}<br>
+                                <b>城池等級：</b><span style="color:#1a73e8; font-weight:bold; font-size:16px;">Lv.${d.level || 1}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).openOn(map);
+            }
+        });
+        m.on('dragend', (e) => { if (isAdmin) { markersData[i].latlng = e.target.getLatLng(); pushToCloud(); } });
+        markerInstances[i] = m;
+    }
+
+    window.jumpToMarker = function(index) {
+        const data = markersData[index];
+        const marker = markerInstances[index];
+        if (data && marker) {
+            map.flyTo(data.latlng, 1, { duration: 1.2 });
+            setTimeout(() => { marker.fire('click'); }, 1300);
+        }
+    };
+
+    map.on('contextmenu', (e) => { if (isAdmin) openForm(e.latlng); });
+
+    function openForm(latlng, index = null) {
+        const isEdit = index !== null;
+        const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '', gate: '' };
+        const historyOptions = guildHistory.map(g => `<option value="${g}">`).join('');
+        let gateOptions = '<option value="">-- 無戰略點 --</option>';
+        for(let i=1; i<=8; i++){
+            const val = `${i}號門`;
+            gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`;
+        }
+        const html = `
+            <div class="popup-form">
+                <strong>${isEdit ? '編輯標記' : '新增標記'}</strong>
+                <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱">
+                <input type="date" id="f_date" value="${d.date || ''}">
+                <label style="font-size:12px; color:#666;">專屬戰略點：</label>
+                <select id="f_gate">${gateOptions}</select>
+                <input type="number" id="f_level" value="${d.level}" placeholder="等級">
+                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會">
+                <datalist id="guild_list">${historyOptions}</datalist>
+                <select id="f_color">
+                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服</option>
+                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服</option>
+                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服</option>
+                    <option value="bg-grey" ${d.color==='bg-grey'?'selected':''}>空城</option>
+                    <option value="bg-white" ${d.color==='bg-white'?'selected':''}>未開放</option>
+                    <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>金色</option>
+                    <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>紫色</option>
+                    <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗色</option>
+                </select>
+                <div class="btn-group">
+                    <button class="btn-save" id="pop-save">儲存同步</button>
+                    ${isEdit ? `<button class="btn-del" id="pop-del">刪除</button>` : ''}
+                </div>
+            </div>`;
+        L.popup({ minWidth: 230 }).setLatLng(latlng).setContent(html).openOn(map);
+        document.getElementById('pop-save').onclick = () => {
+            const guild = document.getElementById('f_guild').value;
+            const level = parseInt(document.getElementById('f_level').value) || 1;
+            const newData = {
+                city: document.getElementById('f_city').value || '未命名',
+                date: document.getElementById('f_date').value,
+                gate: document.getElementById('f_gate').value,
+                level: level, score: level * 20,
+                guild: guild, color: document.getElementById('f_color').value,
+                latlng: { lat: latlng.lat, lng: latlng.lng }
+            };
+            if (guild && !guildHistory.includes(guild)) guildHistory.push(guild);
+            if (isEdit) markersData[index] = newData;
+            else markersData.push(newData);
+            pushToCloud();
+            map.closePopup();
+        };
+        if(isEdit) {
+            document.getElementById('pop-del').onclick = () => {
+                if(confirm('確定刪除？')) {
+                    markersData.splice(index, 1);
+                    pushToCloud();
+                    map.closePopup();
+                }
+            };
+        }
+    }
+
+    function updateDropdown() {
+        const sel = document.getElementById('guild-filter');
+        const current = sel.value;
+        const guildScores = {};
+        markersData.forEach(m => {
+            if (m.guild) {
+                const score = parseInt(m.score) || 0;
+                guildScores[m.guild] = (guildScores[m.guild] || 0) + score;
+            }
+        });
+        const sortedGuilds = Object.keys(guildScores).sort((a, b) => guildScores[b] - guildScores[a]);
+        let options = '<option value="">選擇公會 (依總分排序)...</option>';
+        sortedGuilds.forEach(g => {
+            options += `<option value="${g}" ${g === current ? 'selected' : ''}>${g} (${guildScores[g]}分)</option>`;
+        });
+        sel.innerHTML = options;
+    }
+
+    function updateStats() {
+        const guild = document.getElementById('guild-filter').value;
+        const content = document.getElementById('stat-content');
+        markerInstances.forEach(m => { if (m) { const el = m.getElement(); if (el) el.classList.remove('highlight-marker'); } });
+        if (!guild) { content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; return; }
+        let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
+        mine.sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return new Date(a.date) - new Date(b.date); });
+        let html = ''; let total = 0;
+        mine.forEach(m => {
+            const markerInstance = markerInstances[m.originalIdx];
+            if (markerInstance) { const el = markerInstance.getElement(); if (el) el.classList.add('highlight-marker'); }
+            const today = new Date().toISOString().split('T')[0];
+            const dateStyle = m.date === today ? 'color: #d32f2f; font-weight: bold;' : 'color: #666;';
+            html += `
+                <div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="city-link">🏰 ${m.city}</span>
+                        <b style="color:#d32f2f;">${m.score}</b>
+                    </div>
+                    <div style="font-size:11px; margin-top:4px;">
+                        ${m.gate ? `<span class="gate-tag">📍 ${m.gate}</span> ` : ''}
+                        <span style="${dateStyle}">等級: Lv.${m.level} ${m.date ? `| 📅 ${m.date}` : '| 📅 日期未定'}</span>
+                    </div>
+                </div>`;
+            total += m.score;
+        });
+        html += `<div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">公會總戰略積分：<span style="float:right; font-size:1.1em;">${total}</span></div>`;
+        content.innerHTML = html;
+    }
+
+    function pushToCloud() { if (!isAdmin) return; set(cloudRef, { markers: markersData, guilds: guildHistory }); }
+    document.getElementById('guild-filter').onchange = updateStats;
+    document.getElementById('export-btn').onclick = () => {
+        const blob = new Blob([JSON.stringify({ markers: markersData, guilds: guildHistory })], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `沙盤備份_${new Date().toLocaleDateString()}.json`;
+        a.click();
     };
 </script>
 </body>
