@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v6.1 - 行軍計算版</title>
+    <title>雲端戰略沙盤 v6.2 - 標記公會排名</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
@@ -93,6 +93,32 @@
         .hint { position: absolute; bottom: 15px; left: 15px; z-index: 1000; color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-size: 12px; pointer-events: none; }
         .sync-status { color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right; }
         .gate-tag { background: #eee; padding: 2px 5px; border-radius: 3px; font-size: 10px; color: #333; border: 1px solid #ccc; font-weight: normal; }
+      
+    /* ... 保留您原有的 CSS ... */
+
+    /* 新增排名標籤樣式 */
+    .rank-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        color: white;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+    .rank-1 { background-color: #d4af37; border: 1px solid #b8860b; } /* 金 */
+    .rank-2 { background-color: #aaa9ad; border: 1px solid #7d7d7d; } /* 銀 */
+    .rank-3 { background-color: #cd7f32; border: 1px solid #8b4513; } /* 銅 */
+    .rank-other { background-color: #4a5568; } /* 其他 */
+
+    /* 調整下拉選單樣式以符合視覺 */
+    #guild-filter {
+        background-color: #fff;
+        font-weight: bold;
+        color: #333;
+    }
+ 
     </style>
 </head>
 <body>
@@ -385,37 +411,67 @@
         }
     }
 
+// --- 【更新版】自動排名與排除未開放邏輯 ---
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
         const current = sel.value;
         const guildScores = {};
+
+        // 1. 計算積分（排除顏色為 bg-white 或名稱含"未開放"的標記）
         markersData.forEach(m => {
-            if (m.guild) {
+            const isUnopened = (m.color === 'bg-white' || (m.guild && m.guild.includes("未開放")));
+            if (m.guild && !isUnopened) {
                 const score = parseInt(m.score) || 0;
                 guildScores[m.guild] = (guildScores[m.guild] || 0) + score;
             }
         });
+
+        // 2. 依照總分從高到低進行排序
         const sortedGuilds = Object.keys(guildScores).sort((a, b) => guildScores[b] - guildScores[a]);
-        let options = '<option value="">選擇公會 (依總分排序)...</option>';
-        sortedGuilds.forEach(g => {
-            options += `<option value="${g}" ${g === current ? 'selected' : ''}>${g} (${guildScores[g]}分)</option>`;
+
+        // 3. 注入下拉選單，並在前方加上 Top 排名
+        let options = '<option value="">選擇公會 (依戰力排名)...</option>';
+        sortedGuilds.forEach((g, index) => {
+            const rank = index + 1;
+            // 只有前三名加個小圖示增加辨識度
+            let medal = rank === 1 ? '🥇 ' : (rank === 2 ? '🥈 ' : (rank === 3 ? '🥉 ' : ''));
+            options += `<option value="${g}" ${g === current ? 'selected' : ''}>${medal}Top ${rank} | ${g} (${guildScores[g]}分)</option>`;
         });
+        
         sel.innerHTML = options;
+        
+        // 將排序結果存入全域變數，讓 updateStats 也能顯示排名徽章
+        window.currentRankData = sortedGuilds;
     }
 
-    function updateStats() {
+function updateStats() {
         const guild = document.getElementById('guild-filter').value;
         const content = document.getElementById('stat-content');
+        
+        // 重置地圖標記的高亮
         markerInstances.forEach(m => { if (m) { const el = m.getElement(); if (el) el.classList.remove('highlight-marker'); } });
-        if (!guild) { content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; return; }
+        
+        if (!guild) { 
+            content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; 
+            return; 
+        }
+
+        // 取得排名順序
+        const rankIndex = window.currentRankData ? window.currentRankData.indexOf(guild) : -1;
+        const rankDisplay = rankIndex !== -1 ? `<span style="background:#333; color:gold; padding:2px 6px; border-radius:4px; margin-right:8px; font-size:12px;">Top ${rankIndex + 1}</span>` : '';
+
         let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
         mine.sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return new Date(a.date) - new Date(b.date); });
-        let html = ''; let total = 0;
+        
+        let html = `<div style="padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;">${rankDisplay}<b style="font-size:16px;">${guild}</b></div>`;
+        let total = 0;
+        
         mine.forEach(m => {
             const markerInstance = markerInstances[m.originalIdx];
             if (markerInstance) { const el = markerInstance.getElement(); if (el) el.classList.add('highlight-marker'); }
             const today = new Date().toISOString().split('T')[0];
             const dateStyle = m.date === today ? 'color: #d32f2f; font-weight: bold;' : 'color: #666;';
+            
             html += `
                 <div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -429,6 +485,7 @@
                 </div>`;
             total += m.score;
         });
+        
         html += `<div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">公會總戰略積分：<span style="float:right; font-size:1.1em;">${total}</span></div>`;
         content.innerHTML = html;
     }
