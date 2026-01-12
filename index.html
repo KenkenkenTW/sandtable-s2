@@ -3,12 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v6.2 - 標記公會排名</title>
+    <title>雲端戰略沙盤 v7.0 - 多賽季切換版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
         #map { height: 100vh; width: 100%; }
         
+        /* 賽季頁籤樣式 */
+        .season-tabs {
+            display: flex;
+            gap: 2px;
+            margin: 10px 0;
+            background: #e2e8f0;
+            padding: 3px;
+            border-radius: 6px;
+        }
+        .season-tab {
+            flex: 1;
+            padding: 8px 5px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            color: #4a5568;
+            transition: 0.3s;
+        }
+        .season-tab.active {
+            background: #c53030;
+            color: white;
+        }
+
         /* 基礎標記 */
         .custom-marker { 
             display: flex; align-items: center; justify-content: center; 
@@ -27,7 +52,6 @@
         .bg-purple { background-color: #BE77FF !important; }
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
       
-        /* 被選中公會的標記突顯樣式 */
         .highlight-marker {
             width: 48px !important; height: 48px !important;
             margin-left: -24px !important; margin-top: -24px !important;
@@ -37,7 +61,6 @@
         }
         .highlight-marker span { font-size: 16px !important; }
 
-        /* 特效關鍵影格 */
         @keyframes pulse-red {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
             50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
@@ -49,7 +72,6 @@
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); }
         }
 
-        /* 狀態類名 */
         .today-active { z-index: 1000 !important; border: 3px solid red !important; }
         .today-active:after {
             content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
@@ -62,11 +84,9 @@
             border: 3px solid orange; animation: pulse-orange 2s infinite; pointer-events: none; box-sizing: border-box;
         }
 
-        /* UI 面板 - 左側排行 */
         #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
-        
-        /* UI 面板 - 右側行軍計算器 */
         #march-calc-panel { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-top: 5px solid #c53030; }
+        
         .calc-h { margin: 0 0 10px 0; font-size: 15px; color: #333; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .calc-row { margin-bottom: 8px; }
         .calc-row label { display: block; font-size: 11px; color: #666; }
@@ -93,38 +113,19 @@
         .hint { position: absolute; bottom: 15px; left: 15px; z-index: 1000; color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-size: 12px; pointer-events: none; }
         .sync-status { color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right; }
         .gate-tag { background: #eee; padding: 2px 5px; border-radius: 3px; font-size: 10px; color: #333; border: 1px solid #ccc; font-weight: normal; }
-      
-    /* ... 保留您原有的 CSS ... */
-
-    /* 新增排名標籤樣式 */
-    .rank-badge {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: bold;
-        color: white;
-        margin-right: 5px;
-        vertical-align: middle;
-    }
-    .rank-1 { background-color: #d4af37; border: 1px solid #b8860b; } /* 金 */
-    .rank-2 { background-color: #aaa9ad; border: 1px solid #7d7d7d; } /* 銀 */
-    .rank-3 { background-color: #cd7f32; border: 1px solid #8b4513; } /* 銅 */
-    .rank-other { background-color: #4a5568; } /* 其他 */
-
-    /* 調整下拉選單樣式以符合視覺 */
-    #guild-filter {
-        background-color: #fff;
-        font-weight: bold;
-        color: #333;
-    }
- 
     </style>
 </head>
 <body>
 
 <div id="stat-panel">
-    <h3 style="margin-top:0;">公會勢力排行</h3>
+    <h3 style="margin-top:0;">公會勢力排行 <span id="season-label" style="font-size:12px; color:#c53030;">S2</span></h3>
+    
+    <div class="season-tabs">
+        <div class="season-tab" id="tab-s1" onclick="window.switchSeason('s1')">第一季</div>
+        <div class="season-tab active" id="tab-s2" onclick="window.switchSeason('s2')">第二季</div>
+        <div class="season-tab" id="tab-s3" onclick="window.switchSeason('s3')">第三季</div>
+    </div>
+
     <select id="guild-filter" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer;">
         <option value="">計算積分中...</option>
     </select>
@@ -164,9 +165,9 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, set, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // Firebase 配置 (與 6.0 相同)
+    // Firebase 配置
     const firebaseConfig = {
         apiKey: "AIzaSyC-q2akyvasJ9XfccsNPrXWoxWOWlRq2yQ",
         authDomain: "revelation-sandtable.firebaseapp.com",
@@ -180,7 +181,11 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const cloudRef = ref(db, 'war_map_data');
+
+    // 賽季與路徑管理
+    let currentSeason = 's2';
+    let currentRef = null;
+    const oldPathRef = ref(db, 'war_map_data'); // 舊原始資料路徑
 
     let isAdmin = false;
     const ADMIN_PASSWORD = "wu0 u86"; 
@@ -195,37 +200,74 @@
     L.imageOverlay(imgUrl, bounds).addTo(map);
     map.fitBounds(bounds);
 
-    // --- 行軍計算邏輯 ---
+    // --- 核心邏輯：賽季切換與資料監聽 ---
+    window.switchSeason = function(sId) {
+        if (currentRef) off(currentRef); // 關閉舊監聽
+        
+        currentSeason = sId;
+        currentRef = ref(db, `season_data/${sId}`);
+
+        // 更新 UI
+        document.querySelectorAll('.season-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${sId}`).classList.add('active');
+        document.getElementById('season-label').innerText = sId.toUpperCase();
+        document.getElementById('status-text').innerText = "● 載入中...";
+
+        // 啟動監聽
+        onValue(currentRef, (snapshot) => {
+            let data = snapshot.val();
+
+            // 【自動搬運邏輯】
+            // 如果切換到 S2 但發現新路徑沒資料，自動嘗試從舊路徑搬運
+            if (!data && sId === 's2') {
+                onValue(oldPathRef, (oldSnap) => {
+                    const oldData = oldSnap.val();
+                    if (oldData) {
+                        console.log("偵測到舊資料，正在自動搬移至 S2...");
+                        set(ref(db, 'season_data/s2'), oldData);
+                    }
+                }, { onlyOnce: true });
+                return; 
+            }
+
+            if (data) {
+                markersData = data.markers || [];
+                guildHistory = data.guilds || [];
+            } else {
+                markersData = [];
+                guildHistory = [];
+            }
+            
+            refreshMap();
+            updateDropdown();
+            updateStats();
+            document.getElementById('status-text').innerText = `● ${sId.toUpperCase()} 同步成功`;
+        });
+    };
+
+    // 初始化載入第二季
+    window.switchSeason('s2');
+
+    // --- 行軍計算 ---
     document.getElementById('btn-march-calc').onclick = () => {
         const x1 = parseInt(document.getElementById('m_x1').value);
         const y1 = parseInt(document.getElementById('m_y1').value);
         const x2 = parseInt(document.getElementById('m_x2').value);
         const y2 = parseInt(document.getElementById('m_y2').value);
-
-        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) {
-            alert("請完整輸入起點與終點座標"); return;
-        }
-
-        // 距離公式: ABS(x1-x2) + ABS(y1-y2) - 1
+        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) { alert("請完整輸入座標"); return; }
         let distance = Math.abs(x1 - x2) + Math.abs(y1 - y2) - 1;
-        if (distance < 0) distance = 0; // 起終點相同時設為0
-
-        // 時間計算: 距離 * 4 秒
+        if (distance < 0) distance = 0;
         const totalSec = distance * 4;
-        
-        // 格式化 hh:mm:ss
         const h = Math.floor(totalSec / 3600);
         const m = Math.floor((totalSec % 3600) / 60);
         const s = totalSec % 60;
         const timeStr = [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
-
         const resDiv = document.getElementById('march-result');
         resDiv.style.display = 'block';
         resDiv.innerHTML = `耗時：<b style="color:#c53030; font-size:14px;">${timeStr}</b>`;
     };
 
-    // --- 以下為 v6.0 原有邏輯 ---
-
+    // --- 管理員權限 ---
     const adminBtn = document.getElementById('admin-btn');
     const exportBtn = document.getElementById('export-btn');
     adminBtn.onclick = () => {
@@ -233,7 +275,7 @@
             const pass = prompt("管理密碼：");
             if (pass === ADMIN_PASSWORD) {
                 isAdmin = true;
-                adminBtn.innerText = "🔒 退出管理";
+                adminBtn.innerText = `🔒 退出管理 (${currentSeason.toUpperCase()})`;
                 adminBtn.classList.add('logged-in');
                 exportBtn.style.display = "block";
                 refreshMap();
@@ -247,27 +289,17 @@
         }
     };
 
-    onValue(cloudRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            markersData = data.markers || [];
-            guildHistory = data.guilds || [];
-            refreshMap();
-            updateDropdown();
-            updateStats();
-            document.getElementById('status-text').innerText = "● 雲端已同步";
-        }
-    });
-
     function refreshMap() {
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-        const hasToday = markersData.some(d => d.date === todayStr);
+        
         let targetEffectDate = todayStr;
         let isFutureType = false;
+        const hasToday = markersData.some(d => d.date === todayStr);
+
         if (!hasToday) {
             let closestFuture = null;
             markersData.forEach(d => {
@@ -306,27 +338,22 @@
             if (isAdmin) openForm(e.target.getLatLng(), i); 
             else {
                 const dateInfo = d.date ? d.date : '未設定';
-                let todayTag = "";
-                if (d.date === todayStr) {
-                    todayTag = '<span style="color:red; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🔥 今日開放</span>';
-                } else if (isFutureType && d.date === targetEffectDate) {
-                    todayTag = '<span style="color:orange; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🕒 下次開放預告</span>';
-                }
+                let todayTag = (d.date === todayStr) ? '<span style="color:red; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🔥 今日開放</span>' : 
+                               (isFutureType && d.date === targetEffectDate) ? '<span style="color:orange; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🕒 下次開放預告</span>' : "";
                 const gateInfo = d.gate ? `<br><b>📍 專屬戰略點：</b><span style="color:#d32f2f;">${d.gate}</span>` : '';
-                L.popup({ minWidth: 673, maxWidth: 800 }).setLatLng(e.target.getLatLng()).setContent(`
-                    <div style="display: flex; align-items: stretch; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
-                        <div style="flex: 0 0 453px; width: 453px; height: 308px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
-                            <img src="${d.city}.png" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:308px; text-align:center;\'>🏰 暫無圖片</div>';" style="width: 453px; height: 308px; object-fit: cover; display: block;">
+                L.popup({ minWidth: 600 }).setLatLng(e.target.getLatLng()).setContent(`
+                    <div style="display: flex; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
+                        <div style="flex: 0 0 300px; height: 200px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
+                            <img src="${d.city}.png" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:200px; text-align:center;\'>🏰 暫無圖片</div>';" style="width: 100%; height: 100%; object-fit: cover;">
                         </div>
-                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 180px;">
-                            <div style="border-bottom: 2px solid #1a73e8; padding-bottom: 8px; margin-bottom: 12px;">
-                                <strong style="font-size:20px; color:#333;">${d.city}</strong>${todayTag}
+                        <div style="flex: 1;">
+                            <div style="border-bottom: 2px solid #1a73e8; padding-bottom: 5px; margin-bottom: 10px;">
+                                <strong style="font-size:18px;">${d.city}</strong>${todayTag}
                             </div>
-                            <div style="font-size: 14px; line-height: 2; color: #444;">
-                                <b>佔領公會：</b><br><span style="font-size:16px; color:#000;">${d.guild || '無'}</span>${gateInfo}<br>
-                                <hr style="margin: 10px 0; border: 0; border-top: 1px dashed #ccc;">
+                            <div style="font-size: 13px; line-height: 1.8;">
+                                <b>佔領公會：</b>${d.guild || '無'}${gateInfo}<br>
                                 <b>佔領日期：</b>${dateInfo}<br>
-                                <b>城池等級：</b><span style="color:#1a73e8; font-weight:bold; font-size:16px;">Lv.${d.level || 1}</span>
+                                <b>城池等級：</b>Lv.${d.level || 1}
                             </div>
                         </div>
                     </div>
@@ -359,10 +386,9 @@
         }
         const html = `
             <div class="popup-form">
-                <strong>${isEdit ? '編輯標記' : '新增標記'}</strong>
+                <strong>[編輯${currentSeason.toUpperCase()}] ${isEdit ? '修改' : '新增'}</strong>
                 <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱">
                 <input type="date" id="f_date" value="${d.date || ''}">
-                <label style="font-size:12px; color:#666;">專屬戰略點：</label>
                 <select id="f_gate">${gateOptions}</select>
                 <input type="number" id="f_level" value="${d.level}" placeholder="等級">
                 <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會">
@@ -378,7 +404,7 @@
                     <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗色</option>
                 </select>
                 <div class="btn-group">
-                    <button class="btn-save" id="pop-save">儲存同步</button>
+                    <button class="btn-save" id="pop-save">儲存到${currentSeason.toUpperCase()}</button>
                     ${isEdit ? `<button class="btn-del" id="pop-del">刪除</button>` : ''}
                 </div>
             </div>`;
@@ -411,13 +437,10 @@
         }
     }
 
-// --- 【更新版】自動排名與排除未開放邏輯 ---
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
         const current = sel.value;
         const guildScores = {};
-
-        // 1. 計算積分（排除顏色為 bg-white 或名稱含"未開放"的標記）
         markersData.forEach(m => {
             const isUnopened = (m.color === 'bg-white' || (m.guild && m.guild.includes("未開放")));
             if (m.guild && !isUnopened) {
@@ -425,78 +448,59 @@
                 guildScores[m.guild] = (guildScores[m.guild] || 0) + score;
             }
         });
-
-        // 2. 依照總分從高到低進行排序
         const sortedGuilds = Object.keys(guildScores).sort((a, b) => guildScores[b] - guildScores[a]);
-
-        // 3. 注入下拉選單，並在前方加上 Top 排名
-        let options = '<option value="">選擇公會 (依戰力排名)...</option>';
+        let options = '<option value="">選擇公會 (依排名)...</option>';
         sortedGuilds.forEach((g, index) => {
             const rank = index + 1;
-            // 只有前三名加個小圖示增加辨識度
             let medal = rank === 1 ? '🥇 ' : (rank === 2 ? '🥈 ' : (rank === 3 ? '🥉 ' : ''));
             options += `<option value="${g}" ${g === current ? 'selected' : ''}>${medal}Top ${rank} | ${g} (${guildScores[g]}分)</option>`;
         });
-        
         sel.innerHTML = options;
-        
-        // 將排序結果存入全域變數，讓 updateStats 也能顯示排名徽章
         window.currentRankData = sortedGuilds;
     }
 
-function updateStats() {
+    function updateStats() {
         const guild = document.getElementById('guild-filter').value;
         const content = document.getElementById('stat-content');
-        
-        // 重置地圖標記的高亮
         markerInstances.forEach(m => { if (m) { const el = m.getElement(); if (el) el.classList.remove('highlight-marker'); } });
-        
-        if (!guild) { 
-            content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會查看勢力範圍</div>'; 
-            return; 
-        }
-
-        // 取得排名順序
+        if (!guild) { content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會</div>'; return; }
         const rankIndex = window.currentRankData ? window.currentRankData.indexOf(guild) : -1;
         const rankDisplay = rankIndex !== -1 ? `<span style="background:#333; color:gold; padding:2px 6px; border-radius:4px; margin-right:8px; font-size:12px;">Top ${rankIndex + 1}</span>` : '';
-
         let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
         mine.sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return new Date(a.date) - new Date(b.date); });
-        
         let html = `<div style="padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;">${rankDisplay}<b style="font-size:16px;">${guild}</b></div>`;
         let total = 0;
-        
         mine.forEach(m => {
             const markerInstance = markerInstances[m.originalIdx];
             if (markerInstance) { const el = markerInstance.getElement(); if (el) el.classList.add('highlight-marker'); }
             const today = new Date().toISOString().split('T')[0];
             const dateStyle = m.date === today ? 'color: #d32f2f; font-weight: bold;' : 'color: #666;';
-            
-            html += `
-                <div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="city-link">🏰 ${m.city}</span>
-                        <b style="color:#d32f2f;">${m.score}</b>
-                    </div>
-                    <div style="font-size:11px; margin-top:4px;">
-                        ${m.gate ? `<span class="gate-tag">📍 ${m.gate}</span> ` : ''}
-                        <span style="${dateStyle}">等級: Lv.${m.level} ${m.date ? `| 📅 ${m.date}` : '| 📅 日期未定'}</span>
-                    </div>
-                </div>`;
+            html += `<div class="stat-item" onclick="jumpToMarker(${m.originalIdx})">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="city-link">🏰 ${m.city}</span><b style="color:#d32f2f;">${m.score}</b>
+                </div>
+                <div style="font-size:11px; margin-top:4px;">
+                    ${m.gate ? `<span class="gate-tag">📍 ${m.gate}</span> ` : ''}
+                    <span style="${dateStyle}">Lv.${m.level} ${m.date ? `| 📅 ${m.date}` : '| 📅 待定'}</span>
+                </div>
+            </div>`;
             total += m.score;
         });
-        
-        html += `<div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">公會總戰略積分：<span style="float:right; font-size:1.1em;">${total}</span></div>`;
+        html += `<div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">總積分：<span style="float:right;">${total}</span></div>`;
         content.innerHTML = html;
     }
 
-    function pushToCloud() { if (!isAdmin) return; set(cloudRef, { markers: markersData, guilds: guildHistory }); }
+    function pushToCloud() { 
+        if (!isAdmin) return; 
+        set(currentRef, { markers: markersData, guilds: guildHistory }); 
+    }
+
     document.getElementById('guild-filter').onchange = updateStats;
     document.getElementById('export-btn').onclick = () => {
         const blob = new Blob([JSON.stringify({ markers: markersData, guilds: guildHistory })], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `沙盤備份_${new Date().toLocaleDateString()}.json`;
+        a.download = `沙盤_${currentSeason}_備份.json`;
         a.click();
     };
 </script>
