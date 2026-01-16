@@ -122,8 +122,8 @@
     
     <div class="season-tabs">
         <div class="season-tab" id="tab-s1" onclick="window.switchSeason('s1')">第一季</div>
-        <div class="season-tab active" id="tab-s2" onclick="window.switchSeason('s2')">第二季</div>
-        <div class="season-tab" id="tab-s3" onclick="window.switchSeason('s3')">第三季</div>
+        <div class="season-tab" id="tab-s2" onclick="window.switchSeason('s2')">第二季</div>
+        <div class="season-tab active" id="tab-s3" onclick="window.switchSeason('s3')">第三季</div>
     </div>
 
     <select id="guild-filter" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer;">
@@ -183,7 +183,7 @@
     const db = getDatabase(app);
 
     // 賽季與路徑管理
-    let currentSeason = 's2';
+    let currentSeason = 's3';
     let currentRef = null;
     const oldPathRef = ref(db, 'war_map_data'); // 舊原始資料路徑
 
@@ -246,7 +246,7 @@
     };
 
     // 初始化載入第二季
-    window.switchSeason('s2');
+    window.switchSeason('s3');
 
     // --- 行軍計算 ---
     document.getElementById('btn-march-calc').onclick = () => {
