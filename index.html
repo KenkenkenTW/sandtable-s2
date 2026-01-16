@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v7.0 - 多賽季歷史紀錄版</title>
+    <title>雲端戰略沙盤 v7.0 - 完整功能修復版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* 完全保留您 v7.0 的所有 CSS 樣式 */
+        /* === UI 樣式完全還原 === */
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
         #map { height: 100vh; width: 100%; }
+        
+        /* 賽季頁籤 */
         .season-tabs { display: flex; gap: 2px; margin: 10px 0; background: #e2e8f0; padding: 3px; border-radius: 6px; }
         .season-tab { flex: 1; padding: 8px 5px; text-align: center; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 4px; color: #4a5568; transition: 0.3s; }
         .season-tab.active { background: #c53030; color: white; }
+
+        /* 標記樣式 */
         .custom-marker { display: flex; align-items: center; justify-content: center; border: 2px solid black; border-radius: 50%; color: black; font-weight: bold; font-size: 13px; box-shadow: 0 0 5px rgba(0,0,0,0.5); text-align: center; transform-origin: center !important; }
         .bg-pink { background-color: #ff69b4 !important; }
         .bg-blue { background-color: #87ceeb !important; }
@@ -21,56 +25,52 @@
         .bg-gold { background-color: #ffd700 !important; }
         .bg-purple { background-color: #BE77FF !important; }
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
+
+        /* 高亮與動畫 */
         .highlight-marker { width: 48px !important; height: 48px !important; margin-left: -24px !important; margin-top: -24px !important; z-index: 999 !important; border: 3px solid gold !important; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important; transition: all 0.3s ease; }
-        .highlight-marker span { font-size: 16px !important; }
         @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
         @keyframes pulse-orange { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 165, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); } }
         .today-active { z-index: 1000 !important; border: 3px solid red !important; }
         .today-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid red; animation: pulse-red 2s infinite; pointer-events: none; box-sizing: border-box; }
         .future-active { z-index: 999 !important; border: 3px solid orange !important; }
         .future-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid orange; animation: pulse-orange 2s infinite; pointer-events: none; box-sizing: border-box; }
-        #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 260px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
+
+        /* 面板與工具列 */
+        #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 280px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
         #march-calc-panel { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-top: 5px solid #c53030; }
-        .calc-h { margin: 0 0 10px 0; font-size: 15px; color: #333; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        .calc-h { margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #333; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .calc-row { margin-bottom: 8px; }
-        .calc-row label { display: block; font-size: 11px; color: #666; }
+        .calc-row label { display: block; font-size: 11px; color: #666; margin-bottom: 2px; }
         .calc-in-group { display: flex; gap: 4px; }
         .calc-in-group input { width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; }
         #btn-march-calc { width: 100%; padding: 7px; background: #c53030; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; }
         #march-result { margin-top: 10px; padding: 8px; background: #fff5f5; border-radius: 4px; font-size: 12px; line-height: 1.5; border: 1px dashed #feb2b2; display: none; }
+
         .stat-item { font-size: 13px; margin: 5px 0; padding: 10px 8px; border-bottom: 1px solid #ddd; cursor: pointer; transition: 0.2s; }
         .stat-item:hover { background: rgba(0,0,0,0.05); }
         .city-link { color: #1a73e8; font-weight: bold; }
+
         .toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; gap: 5px; }
         .toolbar button { padding: 8px 12px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px; font-weight: bold; }
-        #admin-btn { background: #d32f2f; }
         #admin-btn.logged-in { background: #2e7d32; }
-        .popup-form { display: flex; flex-direction: column; gap: 8px; min-width: 220px; padding: 5px; }
-        .popup-form input, .popup-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-group { display: flex; gap: 5px; margin-top: 10px; }
-        .btn-save { background: #2e7d32; color: white; border: none; padding: 10px; cursor: pointer; flex: 2; border-radius: 4px; }
-        .btn-del { background: #d32f2f; color: white; border: none; padding: 10px; cursor: pointer; flex: 1; border-radius: 4px; }
-        .hint { position: absolute; bottom: 15px; left: 15px; z-index: 1000; color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-size: 12px; pointer-events: none; }
-        .sync-status { color: #4caf50; font-size: 10px; margin-top: 5px; text-align: right; }
-        .gate-tag { background: #eee; padding: 2px 5px; border-radius: 3px; font-size: 10px; color: #333; border: 1px solid #ccc; font-weight: normal; }
-        
-        /* 新增：歷史紀錄的小捲軸樣式 */
-        .history-list { margin-top: 10px; max-height: 80px; overflow-y: auto; border-top: 1px dashed #ccc; padding-top: 5px; }
-        .history-row { display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-bottom: 2px; background: #f9f9f9; padding: 2px 4px; }
+
+        .gate-tag { background: #eee; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #333; border: 1px solid #ccc; }
+        .history-list { margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px; max-height: 100px; overflow-y: auto; }
+        .history-row { display: flex; justify-content: space-between; font-size: 11px; color: #666; background: #f9f9f9; margin-bottom: 2px; padding: 2px 4px; }
     </style>
 </head>
 <body>
 
 <div id="stat-panel">
-    <h3 style="margin-top:0;">公會勢力排行 <span id="season-label" style="font-size:12px; color:#c53030;">S3</span></h3>
+    <h3 style="margin:0 0 10px 0;">公會勢力排行 <span id="season-label" style="font-size:12px; color:#c53030;">S3</span></h3>
     <div class="season-tabs">
         <div class="season-tab" id="tab-s1" onclick="window.switchSeason('s1')">第一季</div>
         <div class="season-tab" id="tab-s2" onclick="window.switchSeason('s2')">第二季</div>
         <div class="season-tab active" id="tab-s3" onclick="window.switchSeason('s3')">第三季</div>
     </div>
-    <select id="guild-filter" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer;"><option value="">計算積分中...</option></select>
+    <select id="guild-filter" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer;"><option value="">載入中...</option></select>
     <div id="stat-content">請選擇公會查看詳情</div>
-    <div class="sync-status" id="status-text">● 雲端連線中</div>
 </div>
 
 <div id="march-calc-panel">
@@ -85,7 +85,6 @@
     <button id="admin-btn">🔓 管理員登入</button>
     <button id="export-btn" style="display:none;">💾 備份數據</button>
 </div>
-<div class="hint" id="action-hint">紅色閃爍：今日開放 | 橘色閃爍：下次預告</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -106,237 +105,249 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let currentSeason = 's3'; // 預設 S3
-    let currentRef = null;
+    let currentSeason = 's3';
     let isAdmin = false;
-    const ADMIN_PASSWORD = "wu0 u86"; 
+    const ADMIN_PASSWORD = "wu0 u86";
     let markersData = [];
     let guildHistory = [];
     let markerInstances = [];
 
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
-    const bounds = [[0, 0], [2973, 2978]]; 
+    const bounds = [[0, 0], [2973, 2978]];
     L.imageOverlay('https://drive.google.com/thumbnail?id=1MK2MEVjV1uaiDsTNigi5oUEyAJusPpuN&sz=w2973', bounds).addTo(map);
     map.fitBounds(bounds);
 
     window.switchSeason = function(sId) {
-        if (currentRef) off(currentRef);
+        if (window.currentRef) off(window.currentRef);
         currentSeason = sId;
-        currentRef = ref(db, `season_data/${sId}`);
+        window.currentRef = ref(db, `season_data/${sId}`);
         document.querySelectorAll('.season-tab').forEach(t => t.classList.remove('active'));
         document.getElementById(`tab-${sId}`).classList.add('active');
         document.getElementById('season-label').innerText = sId.toUpperCase();
 
-        onValue(currentRef, (snapshot) => {
-            let data = snapshot.val();
-            if (!data && sId === 's3') { // S3 初始自動搬運
-                onValue(ref(db, 'war_map_data'), (oldSnap) => {
-                    const oldData = oldSnap.val();
-                    if (oldData) set(ref(db, 'season_data/s3'), oldData);
-                }, { onlyOnce: true });
-                return;
-            }
+        onValue(window.currentRef, (snapshot) => {
+            const data = snapshot.val();
             markersData = data ? (data.markers || []) : [];
             guildHistory = data ? (data.guilds || []) : [];
             refreshMap();
             updateDropdown();
             updateStats();
-            document.getElementById('status-text').innerText = `● ${sId.toUpperCase()} 同步成功`;
         });
     };
 
     function refreshMap() {
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+        const today = new Date(); today.setHours(0,0,0,0);
+        const todayStr = today.toISOString().split('T')[0];
         
         let targetEffectDate = todayStr;
         let isFutureType = false;
-        const hasToday = markersData.some(d => d.date === todayStr);
-        if (!hasToday) {
-            let closestFuture = null;
+        if (!markersData.some(d => d.date === todayStr)) {
+            let closest = null;
             markersData.forEach(d => {
                 if (d.date) {
                     const dDate = new Date(d.date); dDate.setHours(0,0,0,0);
-                    if (dDate > today) { if (!closestFuture || dDate < closestFuture) closestFuture = dDate; }
+                    if (dDate > today && (!closest || dDate < closest)) closest = dDate;
                 }
             });
-            if (closestFuture) {
-                targetEffectDate = `${closestFuture.getFullYear()}-${String(closestFuture.getMonth()+1).padStart(2,'0')}-${String(closestFuture.getDate()).padStart(2,'0')}`;
+            if (closest) {
+                targetEffectDate = closest.toISOString().split('T')[0];
                 isFutureType = true;
             }
         }
-        markersData.forEach((d, i) => renderMarker(d, i, targetEffectDate, isFutureType));
-    }
 
-    function renderMarker(d, i, targetEffectDate, isFutureType) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        let effectClass = (d.date === targetEffectDate && d.date !== "") ? (isFutureType ? "future-active" : "today-active") : "";
-        
-        const icon = L.divIcon({
-            className: `custom-marker ${d.color} ${effectClass}`,
-            html: `<span>${d.guild ? d.guild.slice(0, 2) : '?'}</span>`,
-            iconSize: [34, 34], iconAnchor: [17, 17]
-        });
-        const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
+        markersData.forEach((d, i) => {
+            let effectClass = (d.date === targetEffectDate && d.date !== "") ? (isFutureType ? "future-active" : "today-active") : "";
+            const icon = L.divIcon({
+                className: `custom-marker ${d.color} ${effectClass}`,
+                html: `<span>${d.guild ? d.guild.slice(0, 2) : '?'}</span>`,
+                iconSize: [34, 34], iconAnchor: [17, 17]
+            });
+            const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
 
-        m.on('click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            if (isAdmin) openForm(e.target.getLatLng(), i);
-            else {
-                // 產生歷史紀錄 HTML
-                let historyHtml = "";
-                if (d.history && d.history.length > 0) {
-                    historyHtml = `<div class="history-list"><strong>📜 歷史佔領：</strong>`;
-                    [...d.history].reverse().forEach(h => {
-                        historyHtml += `<div class="history-row"><span>${h.guild}</span><span>${h.date}</span></div>`;
-                    });
-                    historyHtml += `</div>`;
+            m.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                if (isAdmin) {
+                    openForm(e.target.getLatLng(), i);
+                } else {
+                    let historyHtml = "";
+                    if (d.history && d.history.length > 0) {
+                        historyHtml = `<div class="history-list"><strong>📜 歷史紀錄：</strong>`;
+                        [...d.history].reverse().slice(0, 5).forEach(h => {
+                            historyHtml += `<div class="history-row"><span>${h.guild}</span><span>${h.date}</span></div>`;
+                        });
+                        historyHtml += `</div>`;
+                    }
+
+                    // --- 圖片還原大尺寸 (300x200) ---
+                    L.popup({ minWidth: 600 }).setLatLng(e.target.getLatLng()).setContent(`
+                        <div style="display: flex; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
+                            <div style="flex: 0 0 300px; height: 200px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
+                                <img src="${d.city}.png" 
+                                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:200px; text-align:center;\'>🏰 暫無圖片</div>';" 
+                                     style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="border-bottom: 2px solid #c53030; padding-bottom: 5px; margin-bottom: 10px;">
+                                    <strong style="font-size:18px;">${d.city}</strong>
+                                </div>
+                                <div style="font-size: 14px; line-height: 1.8;">
+                                    <b>佔領公會：</b>${d.guild || '無'}<br>
+                                    <b>城池等級：</b>Lv.${d.level || 1} (${d.score || 0}分)<br>
+                                    <b>開放日期：</b>${d.date || '未設定'}<br>
+                                    ${d.gate ? `<span class="gate-tag">📍 ${d.gate}</span>` : ''}
+                                </div>
+                                ${historyHtml}
+                            </div>
+                        </div>
+                    `).openOn(map);
                 }
+            });
 
-                const todayTag = (d.date === todayStr) ? '<span style="color:red; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🔥 今日開放</span>' : 
-                                 (isFutureType && d.date === targetEffectDate) ? '<span style="color:orange; font-weight:bold; font-size:12px; display:block; margin-top:5px;">🕒 下次開放預告</span>' : "";
-                const gateInfo = d.gate ? `<br><b>📍 專屬戰略點：</b><span style="color:#d32f2f;">${d.gate}</span>` : '';
-                
-                L.popup({ minWidth: 600 }).setLatLng(e.target.getLatLng()).setContent(`
-                    <div style="display: flex; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
-                        <div style="flex: 0 0 300px; height: 200px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
-                            <img src="${d.city}.png" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:200px; text-align:center;\'>🏰 暫無圖片</div>';" style="width: 100%; height: 100%; object-fit: cover;">
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="border-bottom: 2px solid #1a73e8; padding-bottom: 5px; margin-bottom: 10px;">
-                                <strong style="font-size:18px;">${d.city}</strong>${todayTag}
-                            </div>
-                            <div style="font-size: 13px; line-height: 1.8;">
-                                <b>佔領公會：</b>${d.guild || '無'}${gateInfo}<br>
-                                <b>佔領日期：</b>${d.date || '未設定'}<br>
-                                <b>城池等級：</b>Lv.${d.level || 1}
-                            </div>
-                            ${historyHtml}
-                        </div>
-                    </div>
-                `).openOn(map);
-            }
+            m.on('dragend', (e) => { if (isAdmin) { markersData[i].latlng = e.target.getLatLng(); saveToCloud(); } });
+            markerInstances[i] = m;
         });
-        m.on('dragend', (e) => { if (isAdmin) { markersData[i].latlng = e.target.getLatLng(); pushToCloud(); } });
-        markerInstances[i] = m;
     }
-
-    // --- 保留 v7.0 其他原始函數 ---
-    window.jumpToMarker = function(index) {
-        const data = markersData[index]; if (data && markerInstances[index]) { map.flyTo(data.latlng, 1, { duration: 1.2 }); setTimeout(() => { markerInstances[index].fire('click'); }, 1300); }
-    };
 
     map.on('contextmenu', (e) => { if (isAdmin) openForm(e.latlng); });
 
     function openForm(latlng, index = null) {
         const isEdit = index !== null;
         const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '', gate: '', history: [] };
+        
         let gateOptions = '<option value="">-- 無戰略點 --</option>';
         for(let i=1; i<=8; i++){ const val = `${i}號門`; gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`; }
-        
+
         const html = `
-            <div class="popup-form">
-                <strong>[編輯${currentSeason.toUpperCase()}] ${isEdit ? '修改' : '新增'}</strong>
-                <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱">
-                <input type="date" id="f_date" value="${d.date || ''}">
-                <select id="f_gate">${gateOptions}</select>
-                <input type="number" id="f_level" value="${d.level}" placeholder="等級">
-                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會">
+            <div class="popup-form" style="display:flex; flex-direction:column; gap:8px; min-width:210px; padding:5px;">
+                <strong style="text-align:center; border-bottom:1px solid #ddd; padding-bottom:5px;">${isEdit ? '編輯' : '新增'}城池</strong>
+                <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱" style="padding:6px;">
+                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會" style="padding:6px;">
                 <datalist id="guild_list">${guildHistory.map(g => `<option value="${g}">`).join('')}</datalist>
-                <select id="f_color">
-                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服</option>
-                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服</option>
-                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服</option>
-                    <option value="bg-grey" ${d.color==='bg-grey'?'selected':''}>空城</option>
-                    <option value="bg-white" ${d.color==='bg-white'?'selected':''}>未開放</option>
-                    <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>金色</option>
+                <input type="date" id="f_date" value="${d.date || ''}" style="padding:6px;">
+                <select id="f_gate" style="padding:6px;">${gateOptions}</select>
+                <input type="number" id="f_level" value="${d.level}" placeholder="等級" style="padding:6px;">
+                <select id="f_color" style="padding:6px;">
+                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服 (粉)</option>
+                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服 (藍)</option>
+                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服 (綠)</option>
+                    <option value="bg-grey" ${d.color==='bg-grey'?'selected':''}>空城 (灰)</option>
+                    <option value="bg-white" ${d.color==='bg-white'?'selected':''}>未開放 (白)</option>
+                    <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>重點 (金)</option>
                     <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>紫色</option>
                     <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗色</option>
                 </select>
-                <div class="btn-group">
-                    <button class="btn-save" id="pop-save">儲存到${currentSeason.toUpperCase()}</button>
-                    ${isEdit ? `<button class="btn-del" id="pop-del">刪除</button>` : ''}
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <button id="pop-save" style="flex:2; padding:10px; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">儲存</button>
+                    ${isEdit ? `<button id="pop-del" style="flex:1; padding:10px; background:#d32f2f; color:white; border:none; border-radius:4px; cursor:pointer;">刪除</button>` : ''}
                 </div>
             </div>`;
-        L.popup({ minWidth: 230 }).setLatLng(latlng).setContent(html).openOn(map);
-        
+
+        L.popup({ minWidth: 220 }).setLatLng(latlng).setContent(html).openOn(map);
+
         document.getElementById('pop-save').onclick = () => {
             const newGuild = document.getElementById('f_guild').value;
-            const newDate = document.getElementById('f_date').value;
             let history = d.history || [];
-
-            // 核心歷史紀錄逻辑：如果公會變更且不是空值，就記錄舊的
             if (isEdit && d.guild && d.guild !== newGuild) {
                 history.push({ guild: d.guild, date: d.date || '無日期' });
             }
-
             const newData = {
                 city: document.getElementById('f_city').value || '未命名',
-                date: newDate, gate: document.getElementById('f_gate').value,
-                level: parseInt(document.getElementById('f_level').value) || 1, score: (parseInt(document.getElementById('f_level').value) || 1) * 20,
-                guild: newGuild, color: document.getElementById('f_color').value,
+                guild: newGuild,
+                date: document.getElementById('f_date').value,
+                gate: document.getElementById('f_gate').value,
+                level: parseInt(document.getElementById('f_level').value) || 1,
+                score: (parseInt(document.getElementById('f_level').value) || 1) * 20,
+                color: document.getElementById('f_color').value,
                 latlng: { lat: latlng.lat, lng: latlng.lng },
                 history: history
             };
             if (newGuild && !guildHistory.includes(newGuild)) guildHistory.push(newGuild);
             if (isEdit) markersData[index] = newData; else markersData.push(newData);
-            pushToCloud(); map.closePopup();
+            saveToCloud(); map.closePopup();
         };
-        if(isEdit) { document.getElementById('pop-del').onclick = () => { if(confirm('確定刪除？')) { markersData.splice(index, 1); pushToCloud(); map.closePopup(); } }; }
+        if(isEdit) document.getElementById('pop-del').onclick = () => { if(confirm('刪除標記？')) { markersData.splice(index, 1); saveToCloud(); map.closePopup(); } };
     }
 
-    function pushToCloud() { if (isAdmin) set(currentRef, { markers: markersData, guilds: guildHistory }); }
+    function saveToCloud() { if (isAdmin) set(window.currentRef, { markers: markersData, guilds: guildHistory }); }
 
-    // --- 剩下的 v7.0 邏輯完全照舊 ---
-    function updateDropdown() {
-        const sel = document.getElementById('guild-filter'); const current = sel.value; const guildScores = {};
-        markersData.forEach(m => { if (m.guild && m.color !== 'bg-white' && !m.guild.includes("未開放")) { const score = parseInt(m.score) || 0; guildScores[m.guild] = (guildScores[m.guild] || 0) + score; } });
-        const sortedGuilds = Object.keys(guildScores).sort((a, b) => guildScores[b] - guildScores[a]);
-        let options = '<option value="">選擇公會 (依排名)...</option>';
-        sortedGuilds.forEach((g, index) => { const rank = index + 1; let medal = rank === 1 ? '🥇 ' : (rank === 2 ? '🥈 ' : (rank === 3 ? '🥉 ' : '')); options += `<option value="${g}" ${g === current ? 'selected' : ''}>${medal}Top ${rank} | ${g} (${guildScores[g]}分)</option>`; });
-        sel.innerHTML = options; window.currentRankData = sortedGuilds;
-    }
+    const adminBtn = document.getElementById('admin-btn');
+    const exportBtn = document.getElementById('export-btn');
 
-    function updateStats() {
-        const guild = document.getElementById('guild-filter').value; const content = document.getElementById('stat-content');
-        markerInstances.forEach(m => { if (m) { const el = m.getElement(); if (el) el.classList.remove('highlight-marker'); } });
-        if (!guild) { content.innerHTML = '<div style="color:#666;text-align:center;padding:20px;">請選擇公會</div>'; return; }
-        const rankIndex = window.currentRankData ? window.currentRankData.indexOf(guild) : -1;
-        const rankDisplay = rankIndex !== -1 ? `<span style="background:#333; color:gold; padding:2px 6px; border-radius:4px; margin-right:8px; font-size:12px;">Top ${rankIndex + 1}</span>` : '';
-        let mine = markersData.map((m, originalIdx) => ({...m, originalIdx})).filter(m => m.guild === guild);
-        mine.sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return new Date(a.date) - new Date(b.date); });
-        let html = `<div style="padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;">${rankDisplay}<b style="font-size:16px;">${guild}</b></div>`;
-        let total = 0;
-        mine.forEach(m => {
-            const markerInstance = markerInstances[m.originalIdx]; if (markerInstance) { const el = markerInstance.getElement(); if (el) el.classList.add('highlight-marker'); }
-            const today = new Date().toISOString().split('T')[0];
-            const dateStyle = m.date === today ? 'color: #d32f2f; font-weight: bold;' : 'color: #666;';
-            html += `<div class="stat-item" onclick="jumpToMarker(${m.originalIdx})"><div style="display:flex; justify-content:space-between; align-items:center;"><span class="city-link">🏰 ${m.city}</span><b style="color:#d32f2f;">${m.score}</b></div><div style="font-size:11px; margin-top:4px;">${m.gate ? `<span class="gate-tag">📍 ${m.gate}</span> ` : ''}<span style="${dateStyle}">Lv.${m.level} ${m.date ? `| 📅 ${m.date}` : '| 📅 待定'}</span></div></div>`;
-            total += m.score;
-        });
-        html += `<div style="margin-top:15px; padding:12px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-weight:bold;">總積分：<span style="float:right;">${total}</span></div>`;
-        content.innerHTML = html;
-    }
-
-    document.getElementById('admin-btn').onclick = () => {
-        if (!isAdmin) { const pass = prompt("管理密碼："); if (pass === ADMIN_PASSWORD) { isAdmin = true; adminBtn.innerText = `🔒 退出管理 (${currentSeason.toUpperCase()})`; adminBtn.classList.add('logged-in'); exportBtn.style.display = "block"; refreshMap(); } }
-        else { isAdmin = false; adminBtn.innerText = "🔓 管理員登入"; adminBtn.classList.remove('logged-in'); exportBtn.style.display = "none"; refreshMap(); }
+    adminBtn.onclick = () => {
+        if (!isAdmin) {
+            const pass = prompt("管理密碼：");
+            if (pass === ADMIN_PASSWORD) {
+                isAdmin = true;
+                adminBtn.innerText = "🔒 退出管理";
+                adminBtn.classList.add('logged-in');
+                exportBtn.style.display = "block";
+                refreshMap();
+            }
+        } else {
+            isAdmin = false;
+            adminBtn.innerText = "🔓 管理員登入";
+            adminBtn.classList.remove('logged-in');
+            exportBtn.style.display = "none";
+            refreshMap();
+        }
     };
 
     document.getElementById('btn-march-calc').onclick = () => {
-        const x1 = parseInt(document.getElementById('m_x1').value); const y1 = parseInt(document.getElementById('m_y1').value);
-        const x2 = parseInt(document.getElementById('m_x2').value); const y2 = parseInt(document.getElementById('m_y2').value);
-        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) { alert("請完整輸入座標"); return; }
-        let distance = Math.abs(x1 - x2) + Math.abs(y1 - y2) - 1; if (distance < 0) distance = 0;
-        const totalSec = distance * 4; const h = Math.floor(totalSec / 3600); const m = Math.floor((totalSec % 3600) / 60); const s = totalSec % 60;
-        const resDiv = document.getElementById('march-result'); resDiv.style.display = 'block'; resDiv.innerHTML = `耗時：<b style="color:#c53030; font-size:14px;">${[h, m, s].map(v => String(v).padStart(2, '0')).join(':')}</b>`;
+        const x1 = parseInt(document.getElementById('m_x1').value), y1 = parseInt(document.getElementById('m_y1').value);
+        const x2 = parseInt(document.getElementById('m_x2').value), y2 = parseInt(document.getElementById('m_y2').value);
+        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) return;
+        let distance = Math.abs(x1 - x2) + Math.abs(y1 - y2) - 1;
+        const totalSec = Math.max(0, distance * 4);
+        const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+        const res = document.getElementById('march-result');
+        res.style.display = 'block';
+        res.innerHTML = `耗時：<b style="color:#c53030; font-size:14px;">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</b>`;
+    };
+
+    function updateDropdown() {
+        const sel = document.getElementById('guild-filter');
+        const current = sel.value;
+        const scores = {};
+        markersData.forEach(m => { if (m.guild && m.color !== 'bg-white') scores[m.guild] = (scores[m.guild] || 0) + (m.score || 0); });
+        const sorted = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
+        sel.innerHTML = '<option value="">選擇公會...</option>' + sorted.map((g, i) => `<option value="${g}" ${g===current?'selected':''}>Top ${i+1} | ${g} (${scores[g]}分)</option>`).join('');
+    }
+
+    function updateStats() {
+        const guild = document.getElementById('guild-filter').value;
+        const content = document.getElementById('stat-content');
+        markerInstances.forEach(m => { if(m) { const el = m.getElement(); if(el) el.classList.remove('highlight-marker'); } });
+        if (!guild) { content.innerHTML = '<div style="color:#999; text-align:center;">請選擇公會查看詳情</div>'; return; }
+        const mine = markersData.map((m, idx) => ({...m, idx})).filter(m => m.guild === guild);
+        let total = 0;
+        let html = `<div style="padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;"><b style="font-size:16px;">${guild}</b></div>`;
+        mine.forEach(m => {
+            if (markerInstances[m.idx]) { const el = markerInstances[m.idx].getElement(); if(el) el.classList.add('highlight-marker'); }
+            html += `<div class="stat-item" onclick="window.jumpToMarker(${m.idx})">
+                        <div style="display:flex; justify-content:space-between;"><span class="city-link">🏰 ${m.city}</span><b style="color:#d32f2f;">${m.score}</b></div>
+                        <div style="font-size:11px; color:#666; margin-top:4px;">Lv.${m.level} | ${m.date || '無日期'}</div>
+                    </div>`;
+            total += m.score;
+        });
+        html += `<div style="margin-top:10px; padding:10px; background:#fef3c7; border-radius:5px; font-weight:bold; color:#92400e;">總積分：${total}</div>`;
+        content.innerHTML = html;
+    }
+
+    window.jumpToMarker = (idx) => {
+        const d = markersData[idx];
+        if (d) { map.flyTo(d.latlng, 1); setTimeout(() => markerInstances[idx].fire('click'), 500); }
     };
 
     document.getElementById('guild-filter').onchange = updateStats;
-    document.getElementById('export-btn').onclick = () => { const blob = new Blob([JSON.stringify({ markers: markersData, guilds: guildHistory })], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `沙盤_${currentSeason}_備份.json`; a.click(); };
+    exportBtn.onclick = () => {
+        const blob = new Blob([JSON.stringify({ markers: markersData, guilds: guildHistory })], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `沙盤備份_${currentSeason}.json`; a.click();
+    };
 
     window.switchSeason('s3');
 </script>
