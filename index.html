@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v7.0 - 完整功能修復版</title>
+    <title>雲端戰略沙盤 v7.0 - 歷史紀錄編輯版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* === UI 樣式完全還原 === */
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
         #map { height: 100vh; width: 100%; }
         
-        /* 賽季頁籤 */
         .season-tabs { display: flex; gap: 2px; margin: 10px 0; background: #e2e8f0; padding: 3px; border-radius: 6px; }
         .season-tab { flex: 1; padding: 8px 5px; text-align: center; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 4px; color: #4a5568; transition: 0.3s; }
         .season-tab.active { background: #c53030; color: white; }
 
-        /* 標記樣式 */
         .custom-marker { display: flex; align-items: center; justify-content: center; border: 2px solid black; border-radius: 50%; color: black; font-weight: bold; font-size: 13px; box-shadow: 0 0 5px rgba(0,0,0,0.5); text-align: center; transform-origin: center !important; }
         .bg-pink { background-color: #ff69b4 !important; }
         .bg-blue { background-color: #87ceeb !important; }
@@ -26,7 +24,6 @@
         .bg-purple { background-color: #BE77FF !important; }
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
 
-        /* 高亮與動畫 */
         .highlight-marker { width: 48px !important; height: 48px !important; margin-left: -24px !important; margin-top: -24px !important; z-index: 999 !important; border: 3px solid gold !important; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important; transition: all 0.3s ease; }
         @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
         @keyframes pulse-orange { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 165, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); } }
@@ -35,7 +32,6 @@
         .future-active { z-index: 999 !important; border: 3px solid orange !important; }
         .future-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid orange; animation: pulse-orange 2s infinite; pointer-events: none; box-sizing: border-box; }
 
-        /* 面板與工具列 */
         #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 280px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
         #march-calc-panel { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-top: 5px solid #c53030; }
         
@@ -56,8 +52,12 @@
         #admin-btn.logged-in { background: #2e7d32; }
 
         .gate-tag { background: #eee; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #333; border: 1px solid #ccc; }
-        .history-list { margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px; max-height: 100px; overflow-y: auto; }
-        .history-row { display: flex; justify-content: space-between; font-size: 11px; color: #666; background: #f9f9f9; margin-bottom: 2px; padding: 2px 4px; }
+        
+        /* 歷史紀錄與管理清單 */
+        .history-list { margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px; max-height: 120px; overflow-y: auto; }
+        .history-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #666; background: #f9f9f9; margin-bottom: 2px; padding: 2px 4px; border-radius: 2px; }
+        .del-history-btn { cursor: pointer; color: #d32f2f; margin-left: 8px; font-weight: bold; padding: 0 4px; border: 1px solid transparent; border-radius: 3px; }
+        .del-history-btn:hover { border-color: #d32f2f; background: #fff; }
     </style>
 </head>
 <body>
@@ -181,7 +181,6 @@
                         historyHtml += `</div>`;
                     }
 
-                    // --- 圖片還原大尺寸 (300x200) ---
                     L.popup({ minWidth: 600 }).setLatLng(e.target.getLatLng()).setContent(`
                         <div style="display: flex; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
                             <div style="flex: 0 0 300px; height: 200px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
@@ -215,10 +214,24 @@
 
     function openForm(latlng, index = null) {
         const isEdit = index !== null;
-        const d = isEdit ? markersData[index] : { city: '', guild: '', color: 'bg-pink', level: 1, date: '', gate: '', history: [] };
+        let d = isEdit ? JSON.parse(JSON.stringify(markersData[index])) : { city: '', guild: '', color: 'bg-pink', level: 1, date: '', gate: '', history: [] };
         
         let gateOptions = '<option value="">-- 無戰略點 --</option>';
         for(let i=1; i<=8; i++){ const val = `${i}號門`; gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`; }
+
+        // 生成可刪除的歷史紀錄清單
+        let historyEditHtml = "";
+        if (isEdit && d.history && d.history.length > 0) {
+            historyEditHtml = `<div class="history-list"><strong>管理紀錄 (點擊❌刪除)：</strong>`;
+            d.history.forEach((h, hIdx) => {
+                historyEditHtml += `
+                    <div class="history-row">
+                        <span>${h.guild} (${h.date})</span>
+                        <span class="del-history-btn" onclick="window.removeHistory(${index}, ${hIdx})">❌</span>
+                    </div>`;
+            });
+            historyEditHtml += `</div>`;
+        }
 
         const html = `
             <div class="popup-form" style="display:flex; flex-direction:column; gap:8px; min-width:210px; padding:5px;">
@@ -239,6 +252,7 @@
                     <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>紫色</option>
                     <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗色</option>
                 </select>
+                ${historyEditHtml}
                 <div style="display:flex; gap:5px; margin-top:5px;">
                     <button id="pop-save" style="flex:2; padding:10px; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">儲存</button>
                     ${isEdit ? `<button id="pop-del" style="flex:1; padding:10px; background:#d32f2f; color:white; border:none; border-radius:4px; cursor:pointer;">刪除</button>` : ''}
@@ -250,8 +264,9 @@
         document.getElementById('pop-save').onclick = () => {
             const newGuild = document.getElementById('f_guild').value;
             let history = d.history || [];
-            if (isEdit && d.guild && d.guild !== newGuild) {
-                history.push({ guild: d.guild, date: d.date || '無日期' });
+            // 如果公會名稱有變，自動增加一條歷史紀錄
+            if (isEdit && markersData[index].guild && markersData[index].guild !== newGuild) {
+                history.push({ guild: markersData[index].guild, date: markersData[index].date || '無日期' });
             }
             const newData = {
                 city: document.getElementById('f_city').value || '未命名',
@@ -270,6 +285,16 @@
         };
         if(isEdit) document.getElementById('pop-del').onclick = () => { if(confirm('刪除標記？')) { markersData.splice(index, 1); saveToCloud(); map.closePopup(); } };
     }
+
+    // 全域函數：刪除特定歷史條目
+    window.removeHistory = (mIdx, hIdx) => {
+        if(confirm("確定刪除這條歷史紀錄？")) {
+            markersData[mIdx].history.splice(hIdx, 1);
+            saveToCloud();
+            // 重新打開編輯視窗以重新整理列表
+            openForm(markersData[mIdx].latlng, mIdx);
+        }
+    };
 
     function saveToCloud() { if (isAdmin) set(window.currentRef, { markers: markersData, guilds: guildHistory }); }
 
