@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v7.0 - 歷史紀錄編輯版</title>
+    <title>雲端戰略沙盤 v7.0 - 燈號完美修復版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* === UI 樣式完全還原 === */
@@ -25,12 +25,18 @@
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
 
         .highlight-marker { width: 48px !important; height: 48px !important; margin-left: -24px !important; margin-top: -24px !important; z-index: 999 !important; border: 3px solid gold !important; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important; transition: all 0.3s ease; }
+        
+        /* 動態燈號特效 */
         @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
         @keyframes pulse-orange { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); } 50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(255, 165, 0, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); } }
-        .today-active { z-index: 1000 !important; border: 3px solid red !important; }
-        .today-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid red; animation: pulse-red 2s infinite; pointer-events: none; box-sizing: border-box; }
-        .future-active { z-index: 999 !important; border: 3px solid orange !important; }
-        .future-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid orange; animation: pulse-orange 2s infinite; pointer-events: none; box-sizing: border-box; }
+        
+        /* 今日開放 - 紅色 */
+        .today-active { z-index: 1000 !important; border: 3px solid red !important; position: relative; }
+        .today-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid red; animation: pulse-red 2s infinite; pointer-events: none; box-sizing: border-box; left: -3px; top: -3px; padding: 3px; }
+        
+        /* 即將開放 - 橘色 */
+        .future-active { z-index: 999 !important; border: 3px solid orange !important; position: relative; }
+        .future-active:after { content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid orange; animation: pulse-orange 2s infinite; pointer-events: none; box-sizing: border-box; left: -3px; top: -3px; padding: 3px; }
 
         #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 280px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
         #march-calc-panel { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-top: 5px solid #c53030; }
@@ -52,8 +58,6 @@
         #admin-btn.logged-in { background: #2e7d32; }
 
         .gate-tag { background: #eee; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #333; border: 1px solid #ccc; }
-        
-        /* 歷史紀錄與管理清單 */
         .history-list { margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px; max-height: 120px; overflow-y: auto; }
         .history-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #666; background: #f9f9f9; margin-bottom: 2px; padding: 2px 4px; border-radius: 2px; }
         .del-history-btn { cursor: pointer; color: #d32f2f; margin-left: 8px; font-weight: bold; padding: 0 4px; border: 1px solid transparent; border-radius: 3px; }
@@ -74,7 +78,7 @@
 </div>
 
 <div id="march-calc-panel">
-    <div class="calc-h">🏹 差不多行軍時間計算</div>
+    <div class="calc-h">🏹 行軍時間計算</div>
     <div class="calc-row"><label>起點 (X, Y)</label><div class="calc-in-group"><input type="number" id="m_x1" placeholder="X"><input type="number" id="m_y1" placeholder="Y"></div></div>
     <div class="calc-row"><label>終點 (X, Y)</label><div class="calc-in-group"><input type="number" id="m_x2" placeholder="X"><input type="number" id="m_y2" placeholder="Y"></div></div>
     <button id="btn-march-calc">開始計算</button>
@@ -139,27 +143,35 @@
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
 
-        const today = new Date(); today.setHours(0,0,0,0);
+        // --- 修復燈號判定邏輯 ---
+        const today = new Date(); 
+        today.setHours(0,0,0,0);
         const todayStr = today.toISOString().split('T')[0];
         
+        // 1. 檢查今天是否有城池開放
+        const hasToday = markersData.some(d => d.date === todayStr);
         let targetEffectDate = todayStr;
         let isFutureType = false;
-        if (!markersData.some(d => d.date === todayStr)) {
-            let closest = null;
-            markersData.forEach(d => {
-                if (d.date) {
-                    const dDate = new Date(d.date); dDate.setHours(0,0,0,0);
-                    if (dDate > today && (!closest || dDate < closest)) closest = dDate;
-                }
-            });
-            if (closest) {
-                targetEffectDate = closest.toISOString().split('T')[0];
+
+        // 2. 如果今天沒有，找未來最接近的一天
+        if (!hasToday) {
+            let futureDates = markersData
+                .filter(d => d.date && new Date(d.date) > today)
+                .map(d => d.date)
+                .sort();
+            if (futureDates.length > 0) {
+                targetEffectDate = futureDates[0];
                 isFutureType = true;
             }
         }
 
         markersData.forEach((d, i) => {
-            let effectClass = (d.date === targetEffectDate && d.date !== "") ? (isFutureType ? "future-active" : "today-active") : "";
+            // 判定是否符合燈號條件
+            let effectClass = "";
+            if (d.date === targetEffectDate && d.date !== "") {
+                effectClass = isFutureType ? "future-active" : "today-active";
+            }
+
             const icon = L.divIcon({
                 className: `custom-marker ${d.color} ${effectClass}`,
                 html: `<span>${d.guild ? d.guild.slice(0, 2) : '?'}</span>`,
@@ -219,7 +231,6 @@
         let gateOptions = '<option value="">-- 無戰略點 --</option>';
         for(let i=1; i<=8; i++){ const val = `${i}號門`; gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`; }
 
-        // 生成可刪除的歷史紀錄清單
         let historyEditHtml = "";
         if (isEdit && d.history && d.history.length > 0) {
             historyEditHtml = `<div class="history-list"><strong>管理紀錄 (點擊❌刪除)：</strong>`;
@@ -243,14 +254,14 @@
                 <select id="f_gate" style="padding:6px;">${gateOptions}</select>
                 <input type="number" id="f_level" value="${d.level}" placeholder="等級" style="padding:6px;">
                 <select id="f_color" style="padding:6px;">
-                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服</option>
-                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服</option>
-                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服</option>
-                    <option value="bg-grey" ${d.color==='bg-grey'?'selected':''}>無主空城</option>
-                    <option value="bg-white" ${d.color==='bg-white'?'selected':''}>尚未開放</option>
-                    <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>天涯</option>
-                    <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>暮色</option>
-                    <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗大便色</option>
+                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服 (粉)</option>
+                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服 (藍)</option>
+                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服 (綠)</option>
+                    <option value="bg-grey" ${d.color==='bg-grey'?'selected':''}>空城 (灰)</option>
+                    <option value="bg-white" ${d.color==='bg-white'?'selected':''}>未開放 (白)</option>
+                    <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>重點 (金)</option>
+                    <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>紫色</option>
+                    <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗色</option>
                 </select>
                 ${historyEditHtml}
                 <div style="display:flex; gap:5px; margin-top:5px;">
@@ -264,7 +275,6 @@
         document.getElementById('pop-save').onclick = () => {
             const newGuild = document.getElementById('f_guild').value;
             let history = d.history || [];
-            // 如果公會名稱有變，自動增加一條歷史紀錄
             if (isEdit && markersData[index].guild && markersData[index].guild !== newGuild) {
                 history.push({ guild: markersData[index].guild, date: markersData[index].date || '無日期' });
             }
@@ -286,12 +296,10 @@
         if(isEdit) document.getElementById('pop-del').onclick = () => { if(confirm('刪除標記？')) { markersData.splice(index, 1); saveToCloud(); map.closePopup(); } };
     }
 
-    // 全域函數：刪除特定歷史條目
     window.removeHistory = (mIdx, hIdx) => {
         if(confirm("確定刪除這條歷史紀錄？")) {
             markersData[mIdx].history.splice(hIdx, 1);
             saveToCloud();
-            // 重新打開編輯視窗以重新整理列表
             openForm(markersData[mIdx].latlng, mIdx);
         }
     };
