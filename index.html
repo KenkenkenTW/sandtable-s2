@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v7.0 - 燈號完美校正版</title>
+    <title>雲端戰略沙盤 v7.4 - 功能完整校正版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* === UI 樣式完全還原 === */
+        /* === UI 樣式完全還原 v7.0 === */
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
         #map { height: 100vh; width: 100%; }
         
@@ -32,15 +32,12 @@
             100% { transform: scale(1.8); opacity: 0; } 
         }
         
-        /* 修復位移：移除本體 border，改用偽元素製作純動畫圈 */
         .today-active, .future-active { z-index: 1000 !important; }
-        
         .today-active:after { 
             content: ''; position: absolute; inset: -3px; 
             border-radius: 50%; border: 3px solid red; 
             animation: pulse-ring 2s infinite; pointer-events: none; 
         }
-        
         .future-active:after { 
             content: ''; position: absolute; inset: -3px; 
             border-radius: 50%; border: 3px solid orange; 
@@ -71,6 +68,7 @@
         .history-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #666; background: #f9f9f9; margin-bottom: 2px; padding: 2px 4px; border-radius: 2px; }
         .del-history-btn { cursor: pointer; color: #d32f2f; margin-left: 8px; font-weight: bold; padding: 0 4px; border: 1px solid transparent; border-radius: 3px; }
         .del-history-btn:hover { border-color: #d32f2f; background: #fff; }
+        .edit-h-date { border: 1px solid #ccc; font-size: 10px; width: 85px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -118,12 +116,8 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let currentSeason = 's3';
-    let isAdmin = false;
+    let currentSeason = 's3', isAdmin = false, markersData = [], guildHistory = [], markerInstances = [];
     const ADMIN_PASSWORD = "wu0 u86";
-    let markersData = [];
-    let guildHistory = [];
-    let markerInstances = [];
 
     const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
     const bounds = [[0, 0], [2973, 2978]];
@@ -152,29 +146,27 @@
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
 
-        const today = new Date(); 
-        today.setHours(0,0,0,0);
-        const todayStr = today.toISOString().split('T')[0];
-        
+        // --- 燈號邏輯修正 ---
+        const todayStr = new Date().toISOString().split('T')[0];
         const hasToday = markersData.some(d => d.date === todayStr);
-        let targetEffectDate = todayStr;
-        let isFutureType = false;
+        let targetDate = todayStr;
+        let isFuture = false;
 
         if (!hasToday) {
-            let futureDates = markersData
-                .filter(d => d.date && new Date(d.date) > today)
+            const futureDates = markersData
+                .filter(d => d.date && d.date > todayStr)
                 .map(d => d.date)
                 .sort();
             if (futureDates.length > 0) {
-                targetEffectDate = futureDates[0];
-                isFutureType = true;
+                targetDate = futureDates[0];
+                isFuture = true;
             }
         }
 
         markersData.forEach((d, i) => {
             let effectClass = "";
-            if (d.date === targetEffectDate && d.date !== "") {
-                effectClass = isFutureType ? "future-active" : "today-active";
+            if (d.date === targetDate && d.date !== "") {
+                effectClass = isFuture ? "future-active" : "today-active";
             }
 
             const icon = L.divIcon({
@@ -182,52 +174,35 @@
                 html: `<span>${d.guild ? d.guild.slice(0, 2) : '?'}</span>`,
                 iconSize: [34, 34], iconAnchor: [17, 17]
             });
-            const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
 
+            const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
             m.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                if (isAdmin) {
-                    openForm(e.target.getLatLng(), i);
-                } else {
-                    let historyHtml = "";
+                if (isAdmin) { openForm(e.target.getLatLng(), i); } 
+                else {
+                    let hHtml = "";
                     if (d.history && d.history.length > 0) {
-                        historyHtml = `<div class="history-list"><strong>📜 歷史紀錄：</strong>`;
-                        [...d.history].reverse().slice(0, 5).forEach(h => {
-                            historyHtml += `<div class="history-row"><span>${h.guild}</span><span>${h.date}</span></div>`;
-                        });
-                        historyHtml += `</div>`;
+                        hHtml = `<div class="history-list"><strong>📜 歷史紀錄：</strong>` + 
+                            [...d.history].reverse().slice(0, 5).map(h => `<div class="history-row"><span>${h.guild}</span><span>${h.date}</span></div>`).join('') + `</div>`;
                     }
-
                     L.popup({ minWidth: 600 }).setLatLng(e.target.getLatLng()).setContent(`
                         <div style="display: flex; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
                             <div style="flex: 0 0 300px; height: 200px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
-                                <img src="${d.city}.png" 
-                                     onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:200px; text-align:center;\'>🏰 暫無圖片</div>';" 
-                                     style="width: 100%; height: 100%; object-fit: cover;">
+                                <img src="${d.city}.png" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\'color:#aaa; line-height:200px; text-align:center;\'>🏰 暫無圖片</div>';" style="width: 100%; height: 100%; object-fit: cover;">
                             </div>
                             <div style="flex: 1;">
-                                <div style="border-bottom: 2px solid #c53030; padding-bottom: 5px; margin-bottom: 10px;">
-                                    <strong style="font-size:18px;">${d.city}</strong>
-                                </div>
-                                <div style="font-size: 14px; line-height: 1.8;">
-                                    <b>佔領公會：</b>${d.guild || '無'}<br>
-                                    <b>城池等級：</b>Lv.${d.level || 1} (${d.score || 0}分)<br>
-                                    <b>開放日期：</b>${d.date || '未設定'}<br>
-                                    ${d.gate ? `<span class="gate-tag">📍 ${d.gate}</span>` : ''}
-                                </div>
-                                ${historyHtml}
+                                <div style="border-bottom: 2px solid #c53030; padding-bottom: 5px; margin-bottom: 10px;"><strong style="font-size:18px;">${d.city}</strong></div>
+                                <div style="font-size: 14px; line-height: 1.8;"><b>佔領公會：</b>${d.guild || '無'}<br><b>城池等級：</b>Lv.${d.level || 1} (${d.score || 0}分)<br><b>開放日期：</b>${d.date || '未設定'}<br>${d.gate ? `<span class="gate-tag">📍 ${d.gate}</span>` : ''}</div>
+                                ${hHtml}
                             </div>
                         </div>
                     `).openOn(map);
                 }
             });
-
             m.on('dragend', (e) => { if (isAdmin) { markersData[i].latlng = e.target.getLatLng(); saveToCloud(); } });
             markerInstances[i] = m;
         });
     }
-
-    map.on('contextmenu', (e) => { if (isAdmin) openForm(e.latlng); });
 
     function openForm(latlng, index = null) {
         const isEdit = index !== null;
@@ -236,29 +211,27 @@
         let gateOptions = '<option value="">-- 無戰略點 --</option>';
         for(let i=1; i<=8; i++){ const val = `${i}號門`; gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`; }
 
-        let historyEditHtml = "";
+        let hEditHtml = "";
         if (isEdit && d.history && d.history.length > 0) {
-            historyEditHtml = `<div class="history-list"><strong>管理紀錄 (點擊❌刪除)：</strong>`;
-            d.history.forEach((h, hIdx) => {
-                historyEditHtml += `
+            hEditHtml = `<div class="history-list"><strong>管理紀錄 (日期可改)：</strong>` + 
+                d.history.map((h, hIdx) => `
                     <div class="history-row">
-                        <span>${h.guild} (${h.date})</span>
+                        <span>${h.guild}</span>
+                        <input type="date" class="edit-h-date" value="${h.date}" onchange="window.updateHistoryDate(${index}, ${hIdx}, this.value)">
                         <span class="del-history-btn" onclick="window.removeHistory(${index}, ${hIdx})">❌</span>
-                    </div>`;
-            });
-            historyEditHtml += `</div>`;
+                    </div>`).join('') + `</div>`;
         }
 
         const html = `
-            <div class="popup-form" style="display:flex; flex-direction:column; gap:8px; min-width:210px; padding:5px;">
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:210px; padding:5px;">
                 <strong style="text-align:center; border-bottom:1px solid #ddd; padding-bottom:5px;">${isEdit ? '編輯' : '新增'}城池</strong>
-                <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱" style="padding:6px;">
-                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會" style="padding:6px;">
+                <input type="text" id="f_city" value="${d.city}" placeholder="城池名稱">
+                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="佔領公會">
                 <datalist id="guild_list">${guildHistory.map(g => `<option value="${g}">`).join('')}</datalist>
-                <input type="date" id="f_date" value="${d.date || ''}" style="padding:6px;">
-                <select id="f_gate" style="padding:6px;">${gateOptions}</select>
-                <input type="number" id="f_level" value="${d.level}" placeholder="等級" style="padding:6px;">
-                <select id="f_color" style="padding:6px;">
+                <input type="date" id="f_date" value="${d.date || ''}">
+                <select id="f_gate">${gateOptions}</select>
+                <input type="number" id="f_level" value="${d.level}" placeholder="等級">
+                <select id="f_color">
                     <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服公會</option>
                     <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服公會</option>
                     <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服公會</option>
@@ -268,83 +241,74 @@
                     <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>暮色</option>
                     <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗大便色</option>
                 </select>
-                ${historyEditHtml}
+                ${hEditHtml}
                 <div style="display:flex; gap:5px; margin-top:5px;">
-                    <button id="pop-save" style="flex:2; padding:10px; background:#2e7d32; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">儲存</button>
+                    <button id="pop-save" style="flex:2; padding:10px; background:#2e7d32; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">儲存</button>
                     ${isEdit ? `<button id="pop-del" style="flex:1; padding:10px; background:#d32f2f; color:white; border:none; border-radius:4px; cursor:pointer;">刪除</button>` : ''}
                 </div>
             </div>`;
 
         L.popup({ minWidth: 220 }).setLatLng(latlng).setContent(html).openOn(map);
-
         document.getElementById('pop-save').onclick = () => {
-            const newGuild = document.getElementById('f_guild').value;
-            let history = d.history || [];
-            if (isEdit && markersData[index].guild && markersData[index].guild !== newGuild) {
-                history.push({ guild: markersData[index].guild, date: markersData[index].date || '無日期' });
+            const nG = document.getElementById('f_guild').value;
+            let hist = d.history || [];
+            if (isEdit && markersData[index].guild && markersData[index].guild !== nG) {
+                hist.push({ guild: markersData[index].guild, date: markersData[index].date || '無日期' });
             }
-            const newData = {
-                city: document.getElementById('f_city').value || '未命名',
-                guild: newGuild,
-                date: document.getElementById('f_date').value,
-                gate: document.getElementById('f_gate').value,
+            const nD = {
+                city: document.getElementById('f_city').value || '未命名', guild: nG,
+                date: document.getElementById('f_date').value, gate: document.getElementById('f_gate').value,
                 level: parseInt(document.getElementById('f_level').value) || 1,
                 score: (parseInt(document.getElementById('f_level').value) || 1) * 20,
-                color: document.getElementById('f_color').value,
-                latlng: { lat: latlng.lat, lng: latlng.lng },
-                history: history
+                color: document.getElementById('f_color').value, latlng: { lat: latlng.lat, lng: latlng.lng }, history: hist
             };
-            if (newGuild && !guildHistory.includes(newGuild)) guildHistory.push(newGuild);
-            if (isEdit) markersData[index] = newData; else markersData.push(newData);
+            if (nG && !guildHistory.includes(nG)) guildHistory.push(nG);
+            if (isEdit) markersData[index] = nD; else markersData.push(nD);
             saveToCloud(); map.closePopup();
         };
         if(isEdit) document.getElementById('pop-del').onclick = () => { if(confirm('刪除標記？')) { markersData.splice(index, 1); saveToCloud(); map.closePopup(); } };
     }
 
+    // --- 歷史紀錄管理功能 ---
+    window.updateHistoryDate = (mIdx, hIdx, nDate) => {
+        markersData[mIdx].history[hIdx].date = nDate;
+        saveToCloud();
+    };
     window.removeHistory = (mIdx, hIdx) => {
-        if(confirm("確定刪除這條歷史紀錄？")) {
-            markersData[mIdx].history.splice(hIdx, 1);
-            saveToCloud();
-            openForm(markersData[mIdx].latlng, mIdx);
-        }
+        if(confirm("確定刪除歷史？")) { markersData[mIdx].history.splice(hIdx, 1); saveToCloud(); openForm(markersData[mIdx].latlng, mIdx); }
     };
 
     function saveToCloud() { if (isAdmin) set(window.currentRef, { markers: markersData, guilds: guildHistory }); }
 
-    const adminBtn = document.getElementById('admin-btn');
-    const exportBtn = document.getElementById('export-btn');
+    // --- 排行榜功能：排序 (舊到新) ---
+    function updateStats() {
+        const g = document.getElementById('guild-filter').value;
+        const c = document.getElementById('stat-content');
+        markerInstances.forEach(m => { if(m) { const el = m.getElement(); if(el) el.classList.remove('highlight-marker'); } });
+        if (!g) { c.innerHTML = '<div style="color:#999; text-align:center;">請選擇公會查看詳情</div>'; return; }
+        
+        // 過濾並排序：按日期由舊到新
+        const mine = markersData
+            .map((m, idx) => ({...m, idx}))
+            .filter(m => m.guild === g)
+            .sort((a, b) => new Date(a.date || '9999-12-31') - new Date(b.date || '9999-12-31'));
 
-    adminBtn.onclick = () => {
-        if (!isAdmin) {
-            const pass = prompt("管理密碼：");
-            if (pass === ADMIN_PASSWORD) {
-                isAdmin = true;
-                adminBtn.innerText = "🔒 退出管理";
-                adminBtn.classList.add('logged-in');
-                exportBtn.style.display = "block";
-                refreshMap();
-            }
-        } else {
-            isAdmin = false;
-            adminBtn.innerText = "🔓 管理員登入";
-            adminBtn.classList.remove('logged-in');
-            exportBtn.style.display = "none";
-            refreshMap();
-        }
-    };
+        let total = 0;
+        let h = `<div style="padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;"><b style="font-size:16px;">${g}</b></div>`;
+        mine.forEach(m => {
+            if (markerInstances[m.idx]) { const el = markerInstances[m.idx].getElement(); if(el) el.classList.add('highlight-marker'); }
+            h += `<div class="stat-item" onclick="window.jumpToMarker(${m.idx})">
+                    <div style="display:flex; justify-content:space-between;"><span class="city-link">🏰 ${m.city}</span><b style="color:#d32f2f;">${m.score}</b></div>
+                    <div style="font-size:11px; color:#666; margin-top:4px;">Lv.${m.level} | ${m.date || '無日期'}</div>
+                  </div>`;
+            total += m.score;
+        });
+        h += `<div style="margin-top:10px; padding:10px; background:#fef3c7; border-radius:5px; font-weight:bold; color:#92400e;">總積分：${total}</div>`;
+        c.innerHTML = h;
+    }
 
-    document.getElementById('btn-march-calc').onclick = () => {
-        const x1 = parseInt(document.getElementById('m_x1').value), y1 = parseInt(document.getElementById('m_y1').value);
-        const x2 = parseInt(document.getElementById('m_x2').value), y2 = parseInt(document.getElementById('m_y2').value);
-        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) return;
-        let distance = Math.abs(x1 - x2) + Math.abs(y1 - y2) - 1;
-        const totalSec = Math.max(0, distance * 4);
-        const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
-        const res = document.getElementById('march-result');
-        res.style.display = 'block';
-        res.innerHTML = `耗時：<b style="color:#c53030; font-size:14px;">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</b>`;
-    };
-
+    // --- 其他功能 (行軍計算等) ---
+    window.jumpToMarker = (idx) => { const d = markersData[idx]; if (d) { map.flyTo(d.latlng, 1); setTimeout(() => markerInstances[idx].fire('click'), 500); } };
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
         const current = sel.value;
@@ -354,37 +318,40 @@
         sel.innerHTML = '<option value="">選擇公會...</option>' + sorted.map((g, i) => `<option value="${g}" ${g===current?'selected':''}>Top ${i+1} | ${g} (${scores[g]}分)</option>`).join('');
     }
 
-    function updateStats() {
-        const guild = document.getElementById('guild-filter').value;
-        const content = document.getElementById('stat-content');
-        markerInstances.forEach(m => { if(m) { const el = m.getElement(); if(el) el.classList.remove('highlight-marker'); } });
-        if (!guild) { content.innerHTML = '<div style="color:#999; text-align:center;">請選擇公會查看詳情</div>'; return; }
-        const mine = markersData.map((m, idx) => ({...m, idx})).filter(m => m.guild === guild);
-        let total = 0;
-        let html = `<div style="padding-bottom:10px; border-bottom:1px solid #eee; margin-bottom:10px;"><b style="font-size:16px;">${guild}</b></div>`;
-        mine.forEach(m => {
-            if (markerInstances[m.idx]) { const el = markerInstances[m.idx].getElement(); if(el) el.classList.add('highlight-marker'); }
-            html += `<div class="stat-item" onclick="window.jumpToMarker(${m.idx})">
-                        <div style="display:flex; justify-content:space-between;"><span class="city-link">🏰 ${m.city}</span><b style="color:#d32f2f;">${m.score}</b></div>
-                        <div style="font-size:11px; color:#666; margin-top:4px;">Lv.${m.level} | ${m.date || '無日期'}</div>
-                    </div>`;
-            total += m.score;
-        });
-        html += `<div style="margin-top:10px; padding:10px; background:#fef3c7; border-radius:5px; font-weight:bold; color:#92400e;">總積分：${total}</div>`;
-        content.innerHTML = html;
-    }
+    document.getElementById('admin-btn').onclick = () => {
+        if (!isAdmin) {
+            if (prompt("管理密碼：") === ADMIN_PASSWORD) {
+                isAdmin = true;
+                document.getElementById('admin-btn').innerText = "🔒 退出管理";
+                document.getElementById('admin-btn').classList.add('logged-in');
+                document.getElementById('export-btn').style.display = "block";
+                refreshMap();
+            }
+        } else {
+            isAdmin = false;
+            document.getElementById('admin-btn').innerText = "🔓 管理員登入";
+            document.getElementById('admin-btn').classList.remove('logged-in');
+            document.getElementById('export-btn').style.display = "none";
+            refreshMap();
+        }
+    };
 
-    window.jumpToMarker = (idx) => {
-        const d = markersData[idx];
-        if (d) { map.flyTo(d.latlng, 1); setTimeout(() => markerInstances[idx].fire('click'), 500); }
+    document.getElementById('btn-march-calc').onclick = () => {
+        const x1 = parseInt(document.getElementById('m_x1').value), y1 = parseInt(document.getElementById('m_y1').value);
+        const x2 = parseInt(document.getElementById('m_x2').value), y2 = parseInt(document.getElementById('m_y2').value);
+        if (isNaN(x1) || isNaN(y1) || isNaN(x2) || isNaN(y2)) return;
+        let dist = Math.abs(x1 - x2) + Math.abs(y1 - y2) - 1;
+        const totalSec = Math.max(0, dist * 4);
+        const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
+        const res = document.getElementById('march-result');
+        res.style.display = 'block';
+        res.innerHTML = `耗時：<b style="color:#c53030; font-size:14px;">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</b>`;
     };
 
     document.getElementById('guild-filter').onchange = updateStats;
-    exportBtn.onclick = () => {
+    document.getElementById('export-btn').onclick = () => {
         const blob = new Blob([JSON.stringify({ markers: markersData, guilds: guildHistory })], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `沙盤備份_${currentSeason}.json`; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `備份_${currentSeason}.json`; a.click();
     };
 
     window.switchSeason('s3');
