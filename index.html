@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v7.4.1 - 燈號與新增功能校正版</title>
+    <title>雲端戰略沙盤 v7.4.3 - 排除關口計分版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* === UI 樣式完全還原 v7.0 === */
@@ -33,13 +33,11 @@
         }
         
         .today-active, .future-active { z-index: 1000 !important; }
-        /* 今天：紅圈 */
         .today-active:after { 
             content: ''; position: absolute; inset: -3px; 
             border-radius: 50%; border: 5px solid red; 
             animation: pulse-ring 2s infinite; pointer-events: none; 
         }
-        /* 未來最接近：橘圈 (加強亮度與寬度) */
         .future-active:after { 
             content: ''; position: absolute; inset: -3px; 
             border-radius: 50%; border: 5px solid #FFEA00; 
@@ -127,9 +125,11 @@
     L.imageOverlay('https://drive.google.com/thumbnail?id=1MK2MEVjV1uaiDsTNigi5oUEyAJusPpuN&sz=w2973', bounds).addTo(map);
     map.fitBounds(bounds);
 
-    // --- 修正：補回地圖點擊新增標記功能 ---
     map.on('contextmenu', (e) => {
-        if (isAdmin) openForm(e.latlng);
+        if (isAdmin) {
+            L.DomEvent.preventDefault(e);
+            openForm(e.latlng);
+        }
     });
 
     window.switchSeason = function(sId) {
@@ -286,10 +286,18 @@
 
     function saveToCloud() { if (isAdmin) set(window.currentRef, { markers: markersData, guilds: guildHistory }); }
 
+    // --- 修改：計分過濾「關口」 ---
     function updateStats() {
         const g = document.getElementById('guild-filter').value;
         const c = document.getElementById('stat-content');
         markerInstances.forEach(m => { if(m) { const el = m.getElement(); if(el) el.classList.remove('highlight-marker'); } });
+        
+        // 如果選擇的是「關口」，則顯示不計分提示
+        if (g === "關口") {
+            c.innerHTML = '<div style="color:#d32f2f; text-align:center; padding: 10px;">「關口」不列入積分計算。</div>';
+            return;
+        }
+
         if (!g) { c.innerHTML = '<div style="color:#999; text-align:center;">請選擇公會查看詳情</div>'; return; }
         
         const mine = markersData
@@ -312,13 +320,30 @@
     }
 
     window.jumpToMarker = (idx) => { const d = markersData[idx]; if (d) { map.flyTo(d.latlng, 1); setTimeout(() => markerInstances[idx].fire('click'), 500); } };
+    
+    // --- 修改：下拉選單過濾「關口」不計分 ---
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
         const current = sel.value;
         const scores = {};
-        markersData.forEach(m => { if (m.guild && m.color !== 'bg-white') scores[m.guild] = (scores[m.guild] || 0) + (m.score || 0); });
+        markersData.forEach(m => { 
+            // 邏輯：有公會名稱、顏色不是白色、且名稱不是「關口」才計分
+            if (m.guild && m.color !== 'bg-white' && m.guild !== "關口") { 
+                scores[m.guild] = (scores[m.guild] || 0) + (m.score || 0); 
+            } 
+        });
         const sorted = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
-        sel.innerHTML = '<option value="">選擇公會...</option>' + sorted.map((g, i) => `<option value="${g}" ${g===current?'selected':''}>Top ${i+1} | ${g} (${scores[g]}分)</option>`).join('');
+        
+        // 如果想在下拉選單中依然能選到「關口」看它的位置，就把這行補上：
+        let optionsHtml = '<option value="">選擇公會...</option>';
+        optionsHtml += sorted.map((g, i) => `<option value="${g}" ${g===current?'selected':''}>Top ${i+1} | ${g} (${scores[g]}分)</option>`).join('');
+        
+        // 檢查是否有「關口」標記，有的話單獨列在選單底部（不計分）
+        if (markersData.some(m => m.guild === "關口")) {
+            optionsHtml += `<option value="關口" ${current==="關口"?'selected':''}>-- 關口 (不計分) --</option>`;
+        }
+        
+        sel.innerHTML = optionsHtml;
     }
 
     document.getElementById('admin-btn').onclick = () => {
