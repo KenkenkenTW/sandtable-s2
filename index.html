@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v7.4 - 功能完整校正版</title>
+    <title>雲端戰略沙盤 v7.4.1 - 燈號與新增功能校正版</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* === UI 樣式完全還原 v7.0 === */
@@ -33,14 +33,17 @@
         }
         
         .today-active, .future-active { z-index: 1000 !important; }
+        /* 今天：紅圈 */
         .today-active:after { 
             content: ''; position: absolute; inset: -3px; 
             border-radius: 50%; border: 5px solid red; 
             animation: pulse-ring 2s infinite; pointer-events: none; 
         }
+        /* 未來最接近：橘圈 (加強亮度與寬度) */
         .future-active:after { 
             content: ''; position: absolute; inset: -3px; 
             border-radius: 50%; border: 5px solid #FFEA00; 
+            box-shadow: 0 0 10px #FFEA00; 
             animation: pulse-ring 2s infinite; pointer-events: none; 
         }
 
@@ -124,6 +127,11 @@
     L.imageOverlay('https://drive.google.com/thumbnail?id=1MK2MEVjV1uaiDsTNigi5oUEyAJusPpuN&sz=w2973', bounds).addTo(map);
     map.fitBounds(bounds);
 
+    // --- 修正：補回地圖點擊新增標記功能 ---
+    map.on('contextmenu', (e) => {
+        if (isAdmin) openForm(e.latlng);
+    });
+
     window.switchSeason = function(sId) {
         if (window.currentRef) off(window.currentRef);
         currentSeason = sId;
@@ -146,7 +154,6 @@
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
 
-        // --- 燈號邏輯修正 ---
         const todayStr = new Date().toISOString().split('T')[0];
         const hasToday = markersData.some(d => d.date === todayStr);
         let targetDate = todayStr;
@@ -269,7 +276,6 @@
         if(isEdit) document.getElementById('pop-del').onclick = () => { if(confirm('刪除標記？')) { markersData.splice(index, 1); saveToCloud(); map.closePopup(); } };
     }
 
-    // --- 歷史紀錄管理功能 ---
     window.updateHistoryDate = (mIdx, hIdx, nDate) => {
         markersData[mIdx].history[hIdx].date = nDate;
         saveToCloud();
@@ -280,14 +286,12 @@
 
     function saveToCloud() { if (isAdmin) set(window.currentRef, { markers: markersData, guilds: guildHistory }); }
 
-    // --- 排行榜功能：排序 (舊到新) ---
     function updateStats() {
         const g = document.getElementById('guild-filter').value;
         const c = document.getElementById('stat-content');
         markerInstances.forEach(m => { if(m) { const el = m.getElement(); if(el) el.classList.remove('highlight-marker'); } });
         if (!g) { c.innerHTML = '<div style="color:#999; text-align:center;">請選擇公會查看詳情</div>'; return; }
         
-        // 過濾並排序：按日期由舊到新
         const mine = markersData
             .map((m, idx) => ({...m, idx}))
             .filter(m => m.guild === g)
@@ -307,7 +311,6 @@
         c.innerHTML = h;
     }
 
-    // --- 其他功能 (行軍計算等) ---
     window.jumpToMarker = (idx) => { const d = markersData[idx]; if (d) { map.flyTo(d.latlng, 1); setTimeout(() => markerInstances[idx].fire('click'), 500); } };
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
