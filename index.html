@@ -163,7 +163,7 @@
     function refreshMap() {
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         const hasToday = markersData.some(d => d.date === todayStr);
         let targetDate = todayStr;
         let isFuture = false;
