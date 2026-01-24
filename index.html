@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端戰略沙盤 v7.5.2</title>
+    <title>雲端戰略沙盤 v7.5.3</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* === 原有 UI 樣式 (保持不變) === */
+        /* === 1. 完全還原您的原始全域樣式 === */
         body, html { margin: 0; padding: 0; height: 100%; background: #1a1a1a; font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; }
         #map { height: 100vh; width: 100%; }
+        
         .season-tabs { display: flex; gap: 2px; margin: 10px 0; background: #e2e8f0; padding: 3px; border-radius: 6px; }
         .season-tab { flex: 1; padding: 8px 5px; text-align: center; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 4px; color: #4a5568; transition: 0.3s; }
         .season-tab.active { background: #c53030; color: white; }
+
         .custom-marker { display: flex; align-items: center; justify-content: center; border: 2px solid black; border-radius: 50%; color: black; font-weight: bold; font-size: 13px; box-shadow: 0 0 5px rgba(0,0,0,0.5); text-align: center; transform-origin: center !important; }
         .bg-pink { background-color: #ff69b4 !important; }
         .bg-blue { background-color: #87ceeb !important; }
@@ -21,13 +23,17 @@
         .bg-gold { background-color: #ffd700 !important; }
         .bg-purple { background-color: #BE77FF !important; }
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
+
         .highlight-marker { width: 48px !important; height: 48px !important; margin-left: -24px !important; margin-top: -24px !important; z-index: 999 !important; border: 5px solid gold !important; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important; transition: all 0.3s ease; }
+        
         @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 0.9; } 100% { transform: scale(1.8); opacity: 0; } }
         .today-active, .future-active { z-index: 1000 !important; }
         .today-active:after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 5px solid red; animation: pulse-ring 2s infinite; pointer-events: none; }
         .future-active:after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 5px solid #FFEA00; box-shadow: 0 0 10px #FFEA00; animation: pulse-ring 2s infinite; pointer-events: none; }
+
         #stat-panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 280px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-height: 85vh; overflow-y: auto; }
         #march-calc-panel { position: absolute; top: 60px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.95); padding: 15px; border-radius: 8px; width: 200px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border-top: 5px solid #c53030; }
+        
         .calc-h { margin: 0 0 10px 0; font-size: 15px; font-weight: bold; color: #333; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         .calc-row { margin-bottom: 8px; }
         .calc-row label { display: block; font-size: 11px; color: #666; margin-bottom: 2px; }
@@ -35,12 +41,15 @@
         .calc-in-group input { width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 12px; }
         #btn-march-calc { width: 100%; padding: 7px; background: #c53030; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 5px; }
         #march-result { margin-top: 10px; padding: 8px; background: #fff5f5; border-radius: 4px; font-size: 12px; line-height: 1.5; border: 1px dashed #feb2b2; display: none; }
+
         .stat-item { font-size: 13px; margin: 5px 0; padding: 10px 8px; border-bottom: 1px solid #ddd; cursor: pointer; transition: 0.2s; }
         .stat-item:hover { background: rgba(0,0,0,0.05); }
         .city-link { color: #1a73e8; font-weight: bold; }
+
         .toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; gap: 5px; }
         .toolbar button { padding: 8px 12px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px; font-weight: bold; }
         #admin-btn.logged-in { background: #2e7d32; }
+
         .gate-tag { background: #eee; padding: 2px 6px; border-radius: 3px; font-size: 11px; color: #333; border: 1px solid #ccc; }
         .history-list { margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px; max-height: 120px; overflow-y: auto; }
         .history-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #666; background: #f9f9f9; margin-bottom: 2px; padding: 2px 4px; border-radius: 2px; }
@@ -48,36 +57,29 @@
         .del-history-btn:hover { border-color: #d32f2f; background: #fff; }
         .edit-h-date { border: 1px solid #ccc; font-size: 10px; width: 85px; cursor: pointer; }
 
-        /* === 新增：針對彈出編輯視窗的美化樣式 === */
-        .leaflet-popup-content-wrapper { background: #2c2c2e; color: #ffffff; border-radius: 12px; padding: 0; overflow: hidden; }
-        .leaflet-popup-content { margin: 0; width: 260px !important; }
-        .leaflet-popup-tip { background: #2c2c2e; }
-
-        .editor-container { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .editor-header { font-size: 16px; font-weight: bold; text-align: center; color: #ff4d4d; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 5px; }
-        
-        .editor-label { font-size: 11px; color: #aaa; margin-bottom: -5px; padding-left: 2px; }
-        .editor-input { 
-            background: #3a3a3c; border: 1px solid #444; border-radius: 6px; 
-            padding: 8px; color: #fff; font-size: 14px; transition: 0.2s;
+        /* === 2. 僅針對「新增/編輯標記」視窗的專屬美化 (加上 .admin-editor-popup 避免污染) === */
+        .admin-editor-popup .leaflet-popup-content-wrapper { 
+            background: #222 !important; 
+            color: white !important; 
+            border-radius: 10px; 
+            padding: 5px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); 
         }
-        .editor-input:focus { border-color: #ff4d4d; outline: none; background: #48484a; }
+        .admin-editor-popup .leaflet-popup-tip { background: #222 !important; }
         
-        .editor-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        
-        .editor-btn-save { 
-            background: #2e7d32; color: white; border: none; padding: 10px; 
-            border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; 
-            transition: 0.2s; margin-top: 5px;
+        /* 內部表單元件樣式 */
+        .admin-form-box { display: flex; flex-direction: column; gap: 8px; min-width: 210px; padding: 10px; }
+        .admin-form-box input, .admin-form-box select { 
+            background: #333; border: 1px solid #444; border-radius: 4px; 
+            color: white; padding: 6px 8px; font-size: 13px; 
         }
-        .editor-btn-save:hover { background: #388e3c; }
+        .admin-form-box input:focus { border-color: #ff4d4d; outline: none; }
+        .admin-form-box label { font-size: 11px; color: #aaa; margin-bottom: -4px; }
         
-        .editor-btn-del { 
-            background: #d32f2f; color: white; border: none; padding: 10px; 
-            border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; 
-            transition: 0.2s;
-        }
-        .editor-btn-del:hover { background: #b71c1c; }
+        .admin-btn-save { background: #2e7d32; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .admin-btn-save:hover { background: #388e3c; }
+        .admin-btn-del { background: #d32f2f; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .admin-btn-del:hover { background: #b71c1c; }
     </style>
 </head>
 <body>
@@ -147,6 +149,7 @@
         document.querySelectorAll('.season-tab').forEach(t => t.classList.remove('active'));
         document.getElementById(`tab-${sId}`).classList.add('active');
         document.getElementById('season-label').innerText = sId.toUpperCase();
+
         onValue(window.currentRef, (snapshot) => {
             const data = snapshot.val();
             markersData = data ? (data.markers || []) : [];
@@ -187,6 +190,7 @@
                         hHtml = `<div class="history-list"><strong>📜 歷史紀錄：</strong>` + 
                             [...d.history].reverse().slice(0, 5).map(h => `<div class="history-row"><span>${h.guild}</span><span>${h.date}</span></div>`).join('') + `</div>`;
                     }
+                    // 此為一般資訊視窗，不套用美化類名
                     L.popup({ minWidth: 600 }).setLatLng(e.target.getLatLng()).setContent(`
                         <div style="display: flex; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
                             <div style="flex: 0 0 300px; height: 200px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
@@ -206,76 +210,54 @@
         });
     }
 
-    // --- 修改：美化後的 openForm 視窗 ---
+    // --- 修改：僅美化此編輯表單，並加上專屬 className ---
     function openForm(latlng, index = null) {
         const isEdit = index !== null;
         let d = isEdit ? JSON.parse(JSON.stringify(markersData[index])) : { city: '', guild: '', color: 'bg-pink', level: 1, date: '', gate: '', history: [] };
-        
-        let gateOptions = '<option value="">-- 無 --</option>';
+        let gateOptions = '<option value="">-- 無戰略點 --</option>';
         for(let i=1; i<=8; i++){ const val = `${i}號門`; gateOptions += `<option value="${val}" ${d.gate === val ? 'selected' : ''}>${val}</option>`; }
 
         let hEditHtml = "";
         if (isEdit && d.history && d.history.length > 0) {
             hEditHtml = `<div class="history-list"><strong>管理紀錄：</strong>` + 
-                d.history.map((h, hIdx) => `
-                    <div class="history-row">
-                        <span>${h.guild}</span>
-                        <input type="date" class="edit-h-date" value="${h.date}" onchange="window.updateHistoryDate(${index}, ${hIdx}, this.value)">
-                        <span class="del-history-btn" onclick="window.removeHistory(${index}, ${hIdx})">❌</span>
-                    </div>`).join('') + `</div>`;
+                d.history.map((h, hIdx) => `<div class="history-row"><span>${h.guild}</span><input type="date" class="edit-h-date" value="${h.date}" onchange="window.updateHistoryDate(${index}, ${hIdx}, this.value)"><span class="del-history-btn" onclick="window.removeHistory(${index}, ${hIdx})">❌</span></div>`).join('') + `</div>`;
         }
 
         const html = `
-            <div class="editor-container">
-                <div class="editor-header">${isEdit ? '🛠️ 編輯城池' : '📍 新增標記'}</div>
-                
-                <span class="editor-label">城池、關口名稱</span>
-                <input type="text" id="f_city" class="editor-input" value="${d.city}" placeholder="輸入名稱">
-                
-                <span class="editor-label">佔領公會</span>
-                <input type="text" id="f_guild" list="guild_list" class="editor-input" value="${d.guild}" placeholder="輸入公會">
+            <div class="admin-form-box">
+                <strong style="text-align:center; border-bottom:1px solid #444; padding-bottom:5px; color:#ff4d4d;">${isEdit ? '編輯' : '新增'}城池標記</strong>
+                <label>城池名稱</label>
+                <input type="text" id="f_city" value="${d.city}" placeholder="輸入名稱">
+                <label>佔領公會</label>
+                <input type="text" id="f_guild" list="guild_list" value="${d.guild}" placeholder="輸入公會">
                 <datalist id="guild_list">${guildHistory.map(g => `<option value="${g}">`).join('')}</datalist>
-                
-                <div class="editor-row">
-                    <div>
-                        <span class="editor-label">開放日期</span><br>
-                        <input type="date" id="f_date" class="editor-input" style="width:100%; box-sizing:border-box;" value="${d.date || ''}">
-                    </div>
-                    <div>
-                        <span class="editor-label">專屬戰略點</span><br>
-                        <select id="f_gate" class="editor-input" style="width:100%; box-sizing:border-box;">${gateOptions}</select>
-                    </div>
-                </div>
-
-                <div class="editor-row">
-                    <div>
-                        <span class="editor-label">城池等級</span><br>
-                        <input type="number" id="f_level" class="editor-input" style="width:100%; box-sizing:border-box;" value="${d.level}">
-                    </div>
-                    <div>
-                        <span class="editor-label">標記顏色</span><br>
-                        <select id="f_color" class="editor-input" style="width:100%; box-sizing:border-box;">
-                            <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服</option>
-                            <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服</option>
-                            <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服</option>
-                            <option value="bg-grey" ${d.color==='bg-grey'?'selected':''}>關口</option>
-                            <option value="bg-white" ${d.color==='bg-white'?'selected':''}>未開放</option>
-                            <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>天涯</option>
-                            <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>暮色</option>
-                            <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗大便色</option>
-                        </select>
-                    </div>
-                </div>
-
+                <label>開放日期</label>
+                <input type="date" id="f_date" value="${d.date || ''}">
+                <label>專屬戰略點</label>
+                <select id="f_gate">${gateOptions}</select>
+                <label>城池等級</label>
+                <input type="number" id="f_level" value="${d.level}" placeholder="等級">
+                <label>勢力顏色</label>
+                <select id="f_color">
+                    <option value="bg-pink" ${d.color==='bg-pink'?'selected':''}>台服</option>
+                    <option value="bg-blue" ${d.color==='bg-blue'?'selected':''}>韓服</option>
+                    <option value="bg-green" ${d.color==='bg-green'?'selected':''}>日服</option>
+                    <option value="bg-grey" ${d.color==='bg-grey'?'selected':''}>關口</option>
+                    <option value="bg-white" ${d.color==='bg-white'?'selected':''}>未開放</option>
+                    <option value="bg-gold" ${d.color==='bg-gold'?'selected':''}>天涯</option>
+                    <option value="bg-purple" ${d.color==='bg-purple'?'selected':''}>暮色</option>
+                    <option value="bg-brown" ${d.color==='bg-brown'?'selected':''}>狗大便色</option>
+                </select>
                 ${hEditHtml}
-
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                    <button id="pop-save" class="editor-btn-save">確認儲存</button>
-                    ${isEdit ? `<button id="pop-del" class="editor-btn-del">刪除標記</button>` : ''}
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <button id="pop-save" class="admin-btn-save" style="flex:2;">儲存</button>
+                    ${isEdit ? `<button id="pop-del" class="admin-btn-del" style="flex:1;">刪除</button>` : ''}
                 </div>
             </div>`;
 
-        L.popup({ minWidth: 260 }).setLatLng(latlng).setContent(html).openOn(map);
+        // 關鍵點：在這裡加上 className: 'admin-editor-popup'
+        L.popup({ minWidth: 220, className: 'admin-editor-popup' }).setLatLng(latlng).setContent(html).openOn(map);
+
         document.getElementById('pop-save').onclick = () => {
             const nG = document.getElementById('f_guild').value;
             let hist = d.history || [];
@@ -296,10 +278,10 @@
         if(isEdit) document.getElementById('pop-del').onclick = () => { if(confirm('刪除標記？')) { markersData.splice(index, 1); saveToCloud(); map.closePopup(); } };
     }
 
+    // 其餘腳本功能保持不變
     window.updateHistoryDate = (mIdx, hIdx, nDate) => { markersData[mIdx].history[hIdx].date = nDate; saveToCloud(); };
     window.removeHistory = (mIdx, hIdx) => { if(confirm("確定刪除歷史？")) { markersData[mIdx].history.splice(hIdx, 1); saveToCloud(); openForm(markersData[mIdx].latlng, mIdx); } };
     function saveToCloud() { if (isAdmin) set(window.currentRef, { markers: markersData, guilds: guildHistory }); }
-
     function updateStats() {
         const g = document.getElementById('guild-filter').value;
         const c = document.getElementById('stat-content');
@@ -317,7 +299,6 @@
         h += `<div style="margin-top:10px; padding:10px; background:#fef3c7; border-radius:5px; font-weight:bold; color:#92400e;">總積分：${total}</div>`;
         c.innerHTML = h;
     }
-
     window.jumpToMarker = (idx) => { const d = markersData[idx]; if (d) { map.flyTo(d.latlng, 1); setTimeout(() => markerInstances[idx].fire('click'), 500); } };
     function updateDropdown() {
         const sel = document.getElementById('guild-filter');
@@ -327,28 +308,13 @@
         const sorted = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
         let optionsHtml = '<option value="">選擇公會...</option>';
         optionsHtml += sorted.map((g, i) => `<option value="${g}" ${g===current?'selected':''}>Top ${i+1} | ${g} (${scores[g]}分)</option>`).join('');
-        if (markersData.some(m => m.guild === "關口")) { optionsHtml += `<option value="關口" ${current==="關口"?'selected':''}>-- 關口 (不計分) --</option>`; }
+        if (markersData.some(m => m.guild === "關口")) optionsHtml += `<option value="關口" ${current==="關口"?'selected':''}>-- 關口 (不計分) --</option>`;
         sel.innerHTML = optionsHtml;
     }
-
     document.getElementById('admin-btn').onclick = () => {
-        if (!isAdmin) {
-            if (prompt("管理密碼：") === ADMIN_PASSWORD) {
-                isAdmin = true;
-                document.getElementById('admin-btn').innerText = "🔒 退出管理";
-                document.getElementById('admin-btn').classList.add('logged-in');
-                document.getElementById('export-btn').style.display = "block";
-                refreshMap();
-            }
-        } else {
-            isAdmin = false;
-            document.getElementById('admin-btn').innerText = "🔓 管理員登入";
-            document.getElementById('admin-btn').classList.remove('logged-in');
-            document.getElementById('export-btn').style.display = "none";
-            refreshMap();
-        }
+        if (!isAdmin) { if (prompt("管理密碼：") === ADMIN_PASSWORD) { isAdmin = true; document.getElementById('admin-btn').innerText = "🔒 退出管理"; document.getElementById('admin-btn').classList.add('logged-in'); document.getElementById('export-btn').style.display = "block"; refreshMap(); } }
+        else { isAdmin = false; document.getElementById('admin-btn').innerText = "🔓 管理員登入"; document.getElementById('admin-btn').classList.remove('logged-in'); document.getElementById('export-btn').style.display = "none"; refreshMap(); }
     };
-
     document.getElementById('btn-march-calc').onclick = () => {
         const x1 = parseInt(document.getElementById('m_x1').value), y1 = parseInt(document.getElementById('m_y1').value);
         const x2 = parseInt(document.getElementById('m_x2').value), y2 = parseInt(document.getElementById('m_y2').value);
@@ -357,10 +323,8 @@
         const totalSec = Math.max(0, dist * 4);
         const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60;
         const res = document.getElementById('march-result');
-        res.style.display = 'block';
-        res.innerHTML = `耗時：<b style="color:#c53030; font-size:14px;">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</b>`;
+        res.style.display = 'block'; res.innerHTML = `耗時：<b style="color:#c53030; font-size:14px;">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</b>`;
     };
-
     document.getElementById('guild-filter').onchange = updateStats;
     document.getElementById('export-btn').onclick = () => {
         const blob = new Blob([JSON.stringify({ markers: markersData, guilds: guildHistory })], { type: 'application/json' });
