@@ -160,37 +160,82 @@
         });
     };
 
-    function refreshMap() {
+function refreshMap() {
         markerInstances.forEach(m => { if(m) map.removeLayer(m); });
         markerInstances = [];
-        const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        const hasToday = markersData.some(d => d.date === todayStr);
+
+        // 1. 取得本地當前日期
+        const now = new Date();
+        const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+        // 2. 判斷特定日期是否為「大日子」
+        const isBigDay = (dateStr) => {
+            return markersData.some(d => d.date === dateStr);
+        };
+
+        // 3. 定義亮燈邏輯 (僅針對 S3)
+        const shouldLightUp = (marker, targetDateStr) => {
+            // 如果不是 S3，不套用複雜邏輯，或是只套用最簡單的當天判斷
+            if (currentSeason !== 's3') {
+                return marker.date === targetDateStr;
+            }
+
+            if (!marker.date) return false;
+            const start = new Date(marker.date);
+            const target = new Date(targetDateStr);
+            const diffTime = target - start;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) return false;
+            if (diffDays === 0) return true; // 條件 1: 初次開放
+            if (diffDays % 7 === 0) return true; // 條件 2: 7天倍數
+            if (isBigDay(targetDateStr) && diffDays >= 7) return true; // 條件 3: 大日子且已開放2次以上
+
+            return false;
+        };
+
+        // 4. 決定目標日期
         let targetDate = todayStr;
         let isFuture = false;
-        if (!hasToday) {
-            const futureDates = markersData.filter(d => d.date && d.date > todayStr).map(d => d.date).sort();
-            if (futureDates.length > 0) { targetDate = futureDates[0]; isFuture = true; }
+        
+        // 針對 S3 才進行未來 30 天的預測掃描，避免舊季度運算錯誤
+        if (currentSeason === 's3') {
+            const anyToday = markersData.some(d => shouldLightUp(d, todayStr));
+            if (!anyToday) {
+                for (let i = 1; i <= 30; i++) {
+                    let nextDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+                    nextDate.setDate(nextDate.getDate() + i);
+                    let nextStr = nextDate.toISOString().split('T')[0];
+                    if (markersData.some(d => shouldLightUp(d, nextStr))) {
+                        targetDate = nextStr;
+                        isFuture = true;
+                        break;
+                    }
+                }
+            }
         }
 
+        // 5. 繪製標記
         markersData.forEach((d, i) => {
             let effectClass = "";
-            if (d.date === targetDate && d.date !== "") { effectClass = isFuture ? "future-active" : "today-active"; }
+            if (shouldLightUp(d, targetDate)) {
+                effectClass = isFuture ? "future-active" : "today-active";
+            }
+
             const icon = L.divIcon({
                 className: `custom-marker ${d.color} ${effectClass}`,
                 html: `<span>${d.guild ? d.guild.slice(0, 2) : '?'}</span>`,
                 iconSize: [34, 34], iconAnchor: [17, 17]
             });
+
             const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
+            
+            // 點擊事件 (維持原樣...)
             m.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 if (isAdmin) { openForm(e.target.getLatLng(), i); } 
                 else {
-                    let hHtml = "";
-                    if (d.history && d.history.length > 0) {
-                        hHtml = `<div class="history-list"><strong>📜 歷史紀錄：</strong>` + 
-                            [...d.history].reverse().slice(0, 5).map(h => `<div class="history-row"><span>${h.guild}</span><span>${h.date}</span></div>`).join('') + `</div>`;
-                    }
-                    // 此為一般資訊視窗，不套用美化類名
+                    let hHtml = (d.history && d.history.length > 0) ? `<div class="history-list"><strong>📜 歷史紀錄：</strong>` + [...d.history].reverse().slice(0, 5).map(h => `<div class="history-row"><span>${h.guild}</span><span>${h.date}</span></div>`).join('') + `</div>` : "";
                     L.popup({ minWidth: 600 }).setLatLng(e.target.getLatLng()).setContent(`
                         <div style="display: flex; gap: 20px; font-family: 'Microsoft JhengHei'; padding: 5px;">
                             <div style="flex: 0 0 300px; height: 200px; background: #222; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
@@ -198,11 +243,10 @@
                             </div>
                             <div style="flex: 1;">
                                 <div style="border-bottom: 2px solid #c53030; padding-bottom: 5px; margin-bottom: 10px;"><strong style="font-size:18px;">${d.city}</strong></div>
-                                <div style="font-size: 14px; line-height: 1.8;"><b>佔領公會：</b>${d.guild || '無'}<br><b>城池等級：</b>Lv.${d.level || 1} (${d.score || 0}分)<br><b>開放日期：</b>${d.date || '未設定'}<br>${d.gate ? `<span class="gate-tag">📍 ${d.gate}</span>` : ''}</div>
+                                <div style="font-size: 14px; line-height: 1.8;"><b>佔領公會：</b>${d.guild || '無'}<br><b>城池等級：</b>Lv.${d.level || 1} (${d.score || 0}分)<br><b>初次開放：</b>${d.date || '未設定'}<br>${d.gate ? `<span class="gate-tag">📍 ${d.gate}</span>` : ''}</div>
                                 ${hHtml}
                             </div>
-                        </div>
-                    `).openOn(map);
+                        </div>`).openOn(map);
                 }
             });
             m.on('dragend', (e) => { if (isAdmin) { markersData[i].latlng = e.target.getLatLng(); saveToCloud(); } });
