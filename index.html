@@ -168,41 +168,41 @@ function refreshMap() {
         const now = new Date();
         const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
-        // 2. 判斷特定日期是否為「大日子」
-        const isBigDay = (dateStr) => {
-            return markersData.some(d => d.date === dateStr);
-        };
-
-        // 3. 定義亮燈邏輯 (僅針對 S3)
+        // 2. 定義亮燈邏輯 (僅針對 S3)
         const shouldLightUp = (marker, targetDateStr) => {
-            // 如果不是 S3，不套用複雜邏輯，或是只套用最簡單的當天判斷
-            if (currentSeason !== 's3') {
-                return marker.date === targetDateStr;
-            }
+            // A. 基本排除條件：非 S3、無日期、或是佔領公會為「關口」
+            if (currentSeason !== 's3' || !marker.date || marker.guild === "關口") return false;
 
-            if (!marker.date) return false;
             const start = new Date(marker.date);
             const target = new Date(targetDateStr);
             const diffTime = target - start;
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const dayOfWeek = target.getDay(); // 0是週日, 1是週一, 5是週五
 
+            // B. 尚未到達初次開放日
             if (diffDays < 0) return false;
-            if (diffDays === 0) return true; // 條件 1: 初次開放
-            if (diffDays % 7 === 0) return true; // 條件 2: 7天倍數
-            if (isBigDay(targetDateStr) && diffDays >= 7) return true; // 條件 3: 大日子且已開放2次以上
+
+            // C. 條件 1：初次開放當天 (不論星期幾)
+            if (diffDays === 0) return true;
+
+            // D. 條件 2：保護期過後 (滿7天) 且 逢週一或週五
+            // diffDays >= 7 確保了「初開後7天內不亮燈」
+            if (diffDays >= 7 && (dayOfWeek === 1 || dayOfWeek === 5)) {
+                return true;
+            }
 
             return false;
         };
 
-        // 4. 決定目標日期
+        // 3. 決定目標日期 (今天或未來預告)
         let targetDate = todayStr;
         let isFuture = false;
         
-        // 針對 S3 才進行未來 30 天的預測掃描，避免舊季度運算錯誤
         if (currentSeason === 's3') {
             const anyToday = markersData.some(d => shouldLightUp(d, todayStr));
             if (!anyToday) {
-                for (let i = 1; i <= 30; i++) {
+                // 往後尋找 14 天內最近的一個攻城日 (週一或週五，或新城初開日)
+                for (let i = 1; i <= 14; i++) {
                     let nextDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
                     nextDate.setDate(nextDate.getDate() + i);
                     let nextStr = nextDate.toISOString().split('T')[0];
@@ -215,7 +215,7 @@ function refreshMap() {
             }
         }
 
-        // 5. 繪製標記
+        // 4. 繪製標記
         markersData.forEach((d, i) => {
             let effectClass = "";
             if (shouldLightUp(d, targetDate)) {
@@ -230,7 +230,7 @@ function refreshMap() {
 
             const m = L.marker(d.latlng, { icon, draggable: isAdmin }).addTo(map);
             
-            // 點擊事件 (維持原樣...)
+            // 點擊彈窗 (維持原有邏輯)
             m.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 if (isAdmin) { openForm(e.target.getLatLng(), i); } 
