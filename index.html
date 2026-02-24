@@ -25,7 +25,54 @@
         .bg-brown { background-color: #8b4513 !important; color: white !important; }
 
         .highlight-marker { width: 48px !important; height: 48px !important; margin-left: -24px !important; margin-top: -24px !important; z-index: 999 !important; border: 5px solid gold !important; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.8) !important; transition: all 0.3s ease; }
-        
+       
+/* S3 紀念掛畫懸浮窗 */
+.s3-monument {
+    position: absolute;
+    bottom: 25px;
+    right: 25px;
+    z-index: 2000;
+    width: 100px;
+    padding: 6px;
+    background: #fff;
+    border: 3px solid #5d4037; /* 深木色邊框 */
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+/* 掛畫上方的繩子視覺效果 */
+.s3-monument::before {
+    content: '';
+    position: absolute;
+    top: -15px; left: 50%;
+    width: 20px; height: 20px;
+    border-left: 2px solid #333;
+    border-top: 2px solid #333;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.s3-monument:hover {
+    transform: translateY(-10px) rotate(2deg);
+    box-shadow: 8px 15px 25px rgba(0,0,0,0.6);
+}
+
+.s3-monument img {
+    width: 100%;
+    display: block;
+    filter: sepia(0.2); /* 增加一點點懷舊感 */
+}
+
+.s3-monument span {
+    display: block;
+    font-size: 11px;
+    color: #5d4037;
+    font-weight: bold;
+    margin-top: 5px;
+    white-space: nowrap;
+}
+      
         /* 今日攻城：鮮紅雙重雷達感 */
 .today-active:after {
     content: ''; position: absolute; inset: -5px; border-radius: 50%;
@@ -137,6 +184,11 @@
 </div>
 <div id="map"></div>
 
+<div id="s3-monument" class="s3-monument" style="display:none;" onclick="window.openAdvancedViewer('https://drive.google.com/thumbnail?id=1rQxp1V-3qkqzZXLlu_BC5ryTrcgl8410&sz=w4181')">
+    <img src="https://drive.google.com/thumbnail?id=1rQxp1V-3qkqzZXLlu_BC5ryTrcgl8410&sz=w400" alt="S3紀念">
+    <span>📜 2/23 戰報</span>
+</div>
+  
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -170,6 +222,89 @@
         }
     });
 
+ window.openAdvancedViewer = function(imgUrl) {
+        const newWin = window.open('', '_blank');
+        const viewerHtml = `
+            <html>
+            <head>
+                <title>S3 戰報大圖檢視</title>
+                <style>
+                    body { margin: 0; overflow: hidden; background: #0b0b0b; cursor: grab; display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; }
+                    /* 關鍵：使用 will-change 告訴瀏覽器這是一個會頻繁變動的元素，開啟硬體加速 */
+                    #target { 
+                        transform-origin: center; 
+                        user-select: none; 
+                        max-width: none; 
+                        will-change: transform;
+                        box-shadow: 0 0 50px rgba(0,0,0,0.8);
+                    }
+                    .hint { position: fixed; top: 10px; left: 10px; color: #aaa; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-family: sans-serif; font-size: 12px; pointer-events: none; border: 1px solid #444; }
+                </style>
+            </head>
+            <body>
+                <div class="hint">🖱️ 滾輪縮放 / 🖐️ 按住左鍵拖動</div>
+                <img id="target" src="${imgUrl}">
+                <script>
+                    let scale = 0.8, posX = 0, posY = 0;
+                    let isDragging = false, startX, startY;
+                    const img = document.getElementById('target');
+
+                    // 使用 requestAnimationFrame 確保渲染流暢
+                    let ticking = false;
+
+                    function update() {
+                        if (!ticking) {
+                            requestAnimationFrame(() => {
+                                img.style.transform = "translate(" + posX + "px, " + posY + "px) scale(" + scale + ")";
+                                ticking = false;
+                            });
+                            ticking = true;
+                        }
+                    }
+
+                    // 滾輪縮放優化：增加縮放的平滑感
+                    window.addEventListener('wheel', (e) => {
+                        e.preventDefault();
+                        const zoomSpeed = 0.15;
+                        const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
+                        const oldScale = scale;
+                        scale = Math.min(Math.max(0.1, scale + delta), 8);
+                        
+                        // 可選：若要讓縮放更順滑，可以不調整 posX/Y，或是根據滑鼠位置調整
+                        update();
+                    }, { passive: false });
+
+                    // 拖動邏輯
+                    window.addEventListener('mousedown', (e) => {
+                        if (e.button !== 0) return; // 只允許左鍵
+                        isDragging = true;
+                        startX = e.clientX - posX; 
+                        startY = e.clientY - posY;
+                        document.body.style.cursor = 'grabbing';
+                    });
+
+                    window.addEventListener('mousemove', (e) => {
+                        if (!isDragging) return;
+                        posX = e.clientX - startX; 
+                        posY = e.clientY - startY;
+                        update();
+                    });
+
+                    window.addEventListener('mouseup', () => {
+                        isDragging = false;
+                        document.body.style.cursor = 'grab';
+                    });
+
+                    // 初始渲染
+                    img.onload = () => update();
+                <\/script>
+            </body>
+            </html>
+        `;
+        newWin.document.write(viewerHtml);
+        newWin.document.close();
+    };
+  
     window.switchSeason = function(sId) {
         if (window.currentRef) off(window.currentRef);
         currentSeason = sId;
@@ -178,6 +313,16 @@
         document.getElementById(`tab-${sId}`).classList.add('active');
         document.getElementById('season-label').innerText = sId.toUpperCase();
 
+      // 新增：控制紀念掛畫顯示與消失的邏輯
+        const monument = document.getElementById('s3-monument');
+        if (monument) {
+            if (sId === 's3') {
+                monument.style.display = 'block'; // 切換到 S3 就顯示
+            } else {
+                monument.style.display = 'none';  // 切換到其他賽季就隱藏
+            }
+        }
+      
         onValue(window.currentRef, (snapshot) => {
             const data = snapshot.val();
             markersData = data ? (data.markers || []) : [];
