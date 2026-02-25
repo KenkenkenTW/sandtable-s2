@@ -222,7 +222,7 @@
         }
     });
 
- window.openAdvancedViewer = function(imgUrl) {
+window.openAdvancedViewer = function(imgUrl) {
         const newWin = window.open('', '_blank');
         const viewerHtml = `
             <html>
@@ -230,26 +230,25 @@
                 <title>S3 戰報大圖檢視</title>
                 <style>
                     body { margin: 0; overflow: hidden; background: #0b0b0b; cursor: grab; display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; }
-                    /* 關鍵：使用 will-change 告訴瀏覽器這是一個會頻繁變動的元素，開啟硬體加速 */
                     #target { 
                         transform-origin: center; 
                         user-select: none; 
                         max-width: none; 
                         will-change: transform;
                         box-shadow: 0 0 50px rgba(0,0,0,0.8);
+                        opacity: 0; /* 載入前先隱藏，計算完比例再顯示 */
+                        transition: opacity 0.3s ease;
                     }
-                    .hint { position: fixed; top: 10px; left: 10px; color: #aaa; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-family: sans-serif; font-size: 12px; pointer-events: none; border: 1px solid #444; }
+                    .hint { position: fixed; top: 10px; left: 10px; color: #aaa; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 20px; font-family: sans-serif; font-size: 12px; pointer-events: none; border: 1px solid #444; z-index: 10; }
                 </style>
             </head>
             <body>
                 <div class="hint">🖱️ 滾輪縮放 / 🖐️ 按住左鍵拖動</div>
                 <img id="target" src="${imgUrl}">
                 <script>
-                    let scale = 0.8, posX = 0, posY = 0;
+                    let scale = 1, posX = 0, posY = 0;
                     let isDragging = false, startX, startY;
                     const img = document.getElementById('target');
-
-                    // 使用 requestAnimationFrame 確保渲染流暢
                     let ticking = false;
 
                     function update() {
@@ -262,21 +261,32 @@
                         }
                     }
 
-                    // 滾輪縮放優化：增加縮放的平滑感
+                    // --- 關鍵：計算初始縮放比例 ---
+                    img.onload = function() {
+                        const winW = window.innerWidth * 0.9; // 留 10% 邊距
+                        const winH = window.innerHeight * 0.9;
+                        const imgW = img.naturalWidth;
+                        const imgH = img.naturalHeight;
+
+                        // 計算寬與高的縮放比，取較小者以確保圖片完整顯示在視窗內
+                        const ratioW = winW / imgW;
+                        const ratioH = winH / imgH;
+                        scale = Math.min(ratioW, ratioH, 1); // 最高原始大小(1)，不放大
+
+                        img.style.opacity = 1; // 顯示圖片
+                        update();
+                    };
+
                     window.addEventListener('wheel', (e) => {
                         e.preventDefault();
                         const zoomSpeed = 0.15;
                         const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
-                        const oldScale = scale;
-                        scale = Math.min(Math.max(0.1, scale + delta), 8);
-                        
-                        // 可選：若要讓縮放更順滑，可以不調整 posX/Y，或是根據滑鼠位置調整
+                        scale = Math.min(Math.max(0.05, scale + delta * scale), 10); // 讓縮放隨當前比例加成，更有彈性
                         update();
                     }, { passive: false });
 
-                    // 拖動邏輯
                     window.addEventListener('mousedown', (e) => {
-                        if (e.button !== 0) return; // 只允許左鍵
+                        if (e.button !== 0) return;
                         isDragging = true;
                         startX = e.clientX - posX; 
                         startY = e.clientY - posY;
@@ -294,9 +304,6 @@
                         isDragging = false;
                         document.body.style.cursor = 'grab';
                     });
-
-                    // 初始渲染
-                    img.onload = () => update();
                 <\/script>
             </body>
             </html>
